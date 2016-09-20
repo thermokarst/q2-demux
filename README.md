@@ -1,3 +1,3 @@
-# q2-demultiplex
+# q2-demux
 
 Maps sequence barcodes to samples.

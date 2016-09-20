@@ -6,24 +6,20 @@ import ast
 # https://github.com/mitsuhiko/flask/blob/master/setup.py
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
 
-with open('q2_demultiplex/__init__.py', 'rb') as f:
+with open('q2_demux/__init__.py', 'rb') as f:
     hit = _version_re.search(f.read().decode('utf-8')).group(1)
     version = str(ast.literal_eval(hit))
 
 setup(
-    name="q2-demultiplex",
+    name="q2-demux",
     version=version,
     packages=find_packages(),
-    # pandas and q2-dummy-types are only required for the dummy methods and
-    # visualizers provided as examples. Remove these dependencies when you're
-    # ready to develop your plugin, and add your own dependencies (if there are
-    # any).
-    install_requires=['qiime >= 2.0.0', 'pandas', 'q2-dummy-types'],
+    install_requires=['qiime >= 2.0.0'],
     author="Greg Caporaso",
     author_email="gregcaporaso@gmail.com",
     description="Maps sequence barcodes to samples.",
     entry_points={
         "qiime.plugins":
-        ["q2-demultiplex=q2_demultiplex.plugin_setup:plugin"]
+        ["q2-demux=q2_demux.plugin_setup:plugin"]
     }
 )
