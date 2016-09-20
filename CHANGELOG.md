@@ -1,1 +1,1 @@
-# q2-demultiplex changelog
+# q2-demux changelog
