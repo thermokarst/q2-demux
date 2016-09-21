@@ -17,28 +17,46 @@ class BarcodeSequenceIterator(collections.Iterator):
 
     def __iter__(self):
         # Adapted from q2-types
-        for barcode, sequence in itertools.zip_longest(
+        for barcode_fields, sequence_fields in itertools.zip_longest(
                 self.barcode_generator, self.sequence_generator):
-            if barcode is None:
+            if barcode_fields is None:
                 raise ValueError('More sequences were provided than barcodes.')
-            if sequence is None:
+            if sequence_fields is None:
                 raise ValueError('More barcodes were provided than sequences.')
             # The id or description fields may end with "/read-number", which
             # and read number will differ between the sequence and barcode
             # reads. Confirm that they are identical up until the last /
-            if barcode.metadata['id'].rsplit('/', 1)[0] != \
-               sequence.metadata['id'].rsplit('/', 1)[0]:
+            barcode_header_fields = \
+                barcode_fields[0][1:].split(' ', maxsplit=1)
+            sequence_header_fields = \
+                sequence_fields[0][1:].split(' ', maxsplit=1)
+
+            # confirm that both barcode and sequene have header lines with
+            # an equal number of space-separated fields
+            if len(barcode_header_fields) != len(sequence_header_fields):
+                raise ValueError('Mismatched header lines: %s and %s' %
+                                 (barcode_fields[0], sequence_fields[0]))
+
+            # confirm that the id fields are equal
+            if barcode_header_fields[0].rsplit('/', 1)[0] != \
+               sequence_header_fields[0].rsplit('/', 1)[0]:
                 raise ValueError(
                     'Mismatched sequence ids: %s and %s' %
-                    (barcode.metadata['id'].rsplit('/', 1)[0],
-                     sequence.metadata['id'].rsplit('/', 1)[0]))
-            if barcode.metadata['description'].rsplit('/', 1)[0] != \
-               sequence.metadata['description'].rsplit('/', 1)[0]:
-                raise ValueError(
-                    'Mismatched sequence descriptions: %s and %s' %
-                    (barcode.metadata['description'].rsplit('/', 1)[0],
-                     sequence.metadata['description'].rsplit('/', 1)[0]))
-            yield barcode, sequence
+                    (barcode_header_fields[0].rsplit('/', 1)[0],
+                     sequence_header_fields[0].rsplit('/', 1)[0]))
+
+            # if a description field is present, confirm that they're equal
+            # note that the number of fields can only be 1 or 2, due to
+            # maxsplit
+            if len(barcode_header_fields) == 2:
+                if barcode_header_fields[1].rsplit('/', 1)[0] != \
+                   sequence_header_fields[1].rsplit('/', 1)[0]:
+                    raise ValueError(
+                        'Mismatched sequence descriptions: %s and %s' %
+                        (barcode_header_fields[1].rsplit('/', 1)[0],
+                         sequence_header_fields[1].rsplit('/', 1)[0]))
+
+            yield barcode_fields, sequence_fields
 
     def __next__(self):
         return next(self.barcode_generator), next(self.sequence_generator)
@@ -74,14 +92,14 @@ def emp(seqs: BarcodeSequenceIterator,
 
     per_sample_fastqs = {}
 
-    for barcode, sequence in seqs:
+    for barcode_fields, sequence_fields in seqs:
+        barcode_read = barcode_fields[1]
         if rev_comp_barcodes:
-            barcode = barcode.reverse_complement()
-        barcode = str(barcode)
-        barcode = barcode[:barcode_len]
+            barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
+        barcode_read = barcode_read[:barcode_len]
 
         try:
-            sample_id = barcode_map[barcode]
+            sample_id = barcode_map[barcode_read]
         except KeyError:
             # TODO: this should ultimately be logged, but we don't currently
             # have support for that.
@@ -101,17 +119,14 @@ def emp(seqs: BarcodeSequenceIterator,
             per_sample_fastqs[sample_id] = gzip.open(str(path), mode='w')
             manifest_fh.write('%s,%s,%s\n' % (sample_id, path.name, 'forward'))
 
-        # skbio can't currently write to a gzip file handle, so this is a
-        # hack to do that.
-        fastq_lines = ''.join(
-             sequence.write([], format='fastq', phred_offset=33))
+        fastq_lines = '\n'.join(list(sequence_fields)) + '\n'
         fastq_lines = fastq_lines.encode('utf-8')
         per_sample_fastqs[sample_id].write(fastq_lines)
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No valid barcodes were identified.')
 
-    for fh in per_sample_fastqs.values():
+    for sid, fh in per_sample_fastqs.items():
         fh.close()
 
     manifest_fh.close()
