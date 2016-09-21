@@ -1,13 +1,16 @@
+import os.path
 import gzip
 import yaml
 import itertools
 import collections
 
 import skbio
+import pandas as pd
 
 import qiime
 from q2_types.per_sample_sequences import (
-    SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat, YamlFormat)
+    SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat,
+    YamlFormat, FastqGzFormat)
 
 
 class BarcodeSequenceIterator(collections.Iterator):
@@ -37,6 +40,36 @@ class BarcodeSequenceIterator(collections.Iterator):
 
     def __next__(self):
         return next(self.barcode_generator), next(self.sequence_generator)
+
+
+def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
+        -> None:
+    per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
+    per_sample_fastq_counts = {}
+    for per_sample_fastq in per_sample_fastqs:
+        seqs = skbio.io.read(per_sample_fastq[1].open(),
+                             format='fastq',
+                             phred_offset=33, compression='gzip',
+                             constructor=skbio.DNA)
+        count = 0
+        for seq in seqs:
+            count += 1
+        per_sample_fastq_counts[per_sample_fastq[0]] = count
+    result = pd.Series(per_sample_fastq_counts)
+    result.sort_values(inplace=True, ascending=False)
+    result.to_csv(os.path.join(output_dir,
+                  'per-sample-fastq-counts.csv'))
+    with open(os.path.join(output_dir, 'index.html'), 'w') as fh:
+        fh.write('<html><body>\n')
+        fh.write(' <h1>Demultiplexed sequence counts summary</h1>\n')
+        fh.write(' Minimum: %d<br>\n' % result.min())
+        fh.write(' Median: %d<br>\n' % result.max())
+        fh.write(' Mean: %1.3f<br>\n' % result.mean())
+        fh.write(' Maximum: %1.3f<p>\n\n' % result.median())
+        fh.write(' <h1>Demultiplexed sequence counts detail</h1>\n')
+        fh.write(result.to_frame('Counts').to_html())
+        fh.write(' <a href="./per-sample-fastq-counts.csv">csv</a>\n')
+        fh.write('</body></html>')
 
 
 def emp(seqs: BarcodeSequenceIterator,

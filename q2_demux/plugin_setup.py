@@ -41,4 +41,12 @@ plugin.methods.register_function(
                  'http://www.earthmicrobiome.org/emp-standard-protocols/')
 )
 
+plugin.visualizers.register_function(
+    function=q2_demux.summary,
+    inputs={'data': SampleData[SequencesWithQuality]},
+    parameters={},
+    name='Summarize counts per sample.',
+    description=('Generate a tabular summary of counts per sample.')
+)
+
 importlib.import_module('q2_demux._transformer')
