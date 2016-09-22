@@ -22,5 +22,8 @@ setup(
     entry_points={
         "qiime.plugins":
         ["q2-demux=q2_demux.plugin_setup:plugin"]
+    },
+    package_data={
+        'q2_demux.test': ['data/**/*']
     }
 )

@@ -201,6 +201,11 @@ class EmpTests(unittest.TestCase):
         barcodes = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         self.barcodes = qiime.MetadataCategory(barcodes)
 
+    def _compare_manifests(self, act_manifest, exp_manifest):
+        # strip comment lines before comparing
+        act_manifest = [l for l in act_manifest if not l.startswith('#')]
+        self.assertEqual(act_manifest, exp_manifest)
+
     def test_valid(self):
         actual = emp(self.bsi, self.barcodes)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
@@ -232,7 +237,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -290,7 +295,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -339,7 +344,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -390,7 +395,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())

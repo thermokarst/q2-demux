@@ -10,6 +10,10 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat, YamlFormat)
 
 
+def _extract_common_header(header):
+    return header.rsplit('/', 1)[0]
+
+
 class BarcodeSequenceIterator(collections.Iterator):
     def __init__(self, barcode_generator, sequence_generator):
         self.barcode_generator = barcode_generator
@@ -24,20 +28,20 @@ class BarcodeSequenceIterator(collections.Iterator):
             if sequence is None:
                 raise ValueError('More barcodes were provided than sequences.')
             # The id or description fields may end with "/read-number", which
-            # and read number will differ between the sequence and barcode
-            # reads. Confirm that they are identical up until the last /
-            if barcode.metadata['id'].rsplit('/', 1)[0] != \
-               sequence.metadata['id'].rsplit('/', 1)[0]:
+            # will differ between the sequence and barcode reads. Confirm that
+            # they are identical up until the last /
+            if _extract_common_header(barcode.metadata['id']) != \
+               _extract_common_header(sequence.metadata['id']):
                 raise ValueError(
                     'Mismatched sequence ids: %s and %s' %
-                    (barcode.metadata['id'].rsplit('/', 1)[0],
-                     sequence.metadata['id'].rsplit('/', 1)[0]))
-            if barcode.metadata['description'].rsplit('/', 1)[0] != \
-               sequence.metadata['description'].rsplit('/', 1)[0]:
+                    (_extract_common_header(barcode.metadata['id']),
+                     _extract_common_header(sequence.metadata['id'])))
+            if _extract_common_header(barcode.metadata['description']) != \
+               _extract_common_header(sequence.metadata['description']):
                 raise ValueError(
                     'Mismatched sequence descriptions: %s and %s' %
-                    (barcode.metadata['description'].rsplit('/', 1)[0],
-                     sequence.metadata['description'].rsplit('/', 1)[0]))
+                    (_extract_common_header(barcode.metadata['description']),
+                     _extract_common_header(sequence.metadata['description'])))
             yield barcode, sequence
 
     def __next__(self):
@@ -71,6 +75,9 @@ def emp(seqs: BarcodeSequenceIterator,
     manifest = FastqManifestFormat()
     manifest_fh = manifest.open()
     manifest_fh.write('sample-id,filename,direction\n')
+    manifest_fh.write('# direction is not meaningful in this file as these\n')
+    manifest_fh.write('# data may be derived from forward, reverse, or \n')
+    manifest_fh.write('# joined reads\n')
 
     per_sample_fastqs = {}
 
@@ -109,7 +116,10 @@ def emp(seqs: BarcodeSequenceIterator,
         per_sample_fastqs[sample_id].write(fastq_lines)
 
     if len(per_sample_fastqs) == 0:
-        raise ValueError('No valid barcodes were identified.')
+        raise ValueError('No sequences were mapped to samples. Check that '
+                         'your barcodes are in the correct orientation (see '
+                         'rev_comp_barcodes and/or rev_comp_mapping_barcodes '
+                         'options).')
 
     for fh in per_sample_fastqs.values():
         fh.close()
