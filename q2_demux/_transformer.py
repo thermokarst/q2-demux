@@ -1,22 +1,20 @@
 import shutil
 
-import skbio
 from q2_types.per_sample_sequences import FastqGzFormat
 
 from .plugin_setup import plugin
-from ._demux import BarcodeSequenceIterator
+from ._demux import BarcodeSequenceFastqIterator, _read_fastq_seqs
 from ._format import EMPMultiplexedDirFmt, EMPMultiplexedSingleEndDirFmt
 
 
 @plugin.register_transformer
-def _1(dirfmt: EMPMultiplexedDirFmt) -> BarcodeSequenceIterator:
-    barcode_generator = skbio.io.read(
-        str(dirfmt.barcodes.view(FastqGzFormat)), format='fastq',
-        constructor=skbio.DNA, phred_offset=33, verify=False)
-    sequence_generator = skbio.io.read(
-        str(dirfmt.sequences.view(FastqGzFormat)), format='fastq',
-        constructor=skbio.DNA, phred_offset=33, verify=False)
-    result = BarcodeSequenceIterator(barcode_generator, sequence_generator)
+def _1(dirfmt: EMPMultiplexedDirFmt) -> BarcodeSequenceFastqIterator:
+    barcode_generator = _read_fastq_seqs(
+        str(dirfmt.barcodes.view(FastqGzFormat)))
+    sequence_generator = _read_fastq_seqs(
+        str(dirfmt.sequences.view(FastqGzFormat)))
+    result = BarcodeSequenceFastqIterator(barcode_generator,
+                                          sequence_generator)
     # ensure that dirfmt stays in scope as long as result does so these
     # generators will work.
     result.__dirfmt = dirfmt
