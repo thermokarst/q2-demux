@@ -109,6 +109,51 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             list(bsi)
 
+    def test_no_description(self):
+        barcodes = [('@s1/2', 'AAAA', '+', 'YYYY'),
+                    ('@s2/2', 'AAAA', '+', 'PPPP'),
+                    ('@s3/2', 'AACC', '+', 'PPPP'),
+                    ('@s4/2', 'AACC', '+', 'PPPP')]
+
+        sequences = [('@s1/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1', 'TTT', '+', 'PPP')]
+
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        for i, (barcode, sequence) in enumerate(bsi):
+            self.assertEqual(barcode, barcodes[i])
+            self.assertEqual(sequence, sequences[i])
+
+    def test_only_one_description(self):
+        barcodes = [('@s1/2 abc', 'AAAA', '+', 'YYYY'),
+                    ('@s2/2 abc', 'AAAA', '+', 'PPPP'),
+                    ('@s3/2 abc', 'AACC', '+', 'PPPP'),
+                    ('@s4/2 abc', 'AACC', '+', 'PPPP')]
+
+        sequences = [('@s1/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1', 'TTT', '+', 'PPP')]
+
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        with self.assertRaises(ValueError):
+            list(bsi)
+
+        barcodes = [('@s1/2', 'AAAA', '+', 'YYYY'),
+                    ('@s2/2', 'AAAA', '+', 'PPPP'),
+                    ('@s3/2', 'AACC', '+', 'PPPP'),
+                    ('@s4/2', 'AACC', '+', 'PPPP')]
+
+        sequences = [('@s1/1 abc', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc', 'AAA', '+', 'PPP'),
+                     ('@s4/1 abc', 'TTT', '+', 'PPP')]
+
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        with self.assertRaises(ValueError):
+            list(bsi)
+
 
 class EmpTests(unittest.TestCase):
 
