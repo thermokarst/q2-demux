@@ -15,7 +15,7 @@ setup(
     version=version,
     packages=find_packages(),
     install_requires=['qiime >= 2.0.0', 'numpy', 'pandas', 'scikit-bio',
-                      'q2-types', ],
+                      'q2-types', 'seaborn'],
     author="Greg Caporaso",
     author_email="gregcaporaso@gmail.com",
     description="Maps sequence barcodes to samples.",
