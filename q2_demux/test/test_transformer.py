@@ -3,7 +3,7 @@ import tempfile
 
 from q2_demux._format import (EMPMultiplexedDirFmt,
                               EMPMultiplexedSingleEndDirFmt)
-from q2_demux._demux import BarcodeSequenceIterator
+from q2_demux._demux import BarcodeSequenceFastqIterator
 from q2_types.testing import TestPluginBase
 
 
@@ -27,7 +27,7 @@ class TestTransformers(TestPluginBase):
 
     def test_emp_multiplexed_format_barcode_sequence_iterator(self):
         transformer = self.get_transformer(EMPMultiplexedDirFmt,
-                                           BarcodeSequenceIterator)
+                                           BarcodeSequenceFastqIterator)
         dirname = 'emp_multiplexed'
         dirpath = self.get_data_path(dirname)
         bsi = transformer(EMPMultiplexedDirFmt(dirpath, mode='r'))
@@ -56,7 +56,7 @@ class TestTransformers(TestPluginBase):
         transformer1 = self.get_transformer(EMPMultiplexedSingleEndDirFmt,
                                             EMPMultiplexedDirFmt)
         transformer2 = self.get_transformer(EMPMultiplexedDirFmt,
-                                            BarcodeSequenceIterator)
+                                            BarcodeSequenceFastqIterator)
         dirname = 'emp_multiplexed_single_end'
         dirpath = self.get_data_path(dirname)
         emp_demultiplexed = \
@@ -87,7 +87,7 @@ class TestTransformers(TestPluginBase):
         dirname = 'bad'
         dirpath = self.get_data_path(dirname)
         transformer = self.get_transformer(EMPMultiplexedDirFmt,
-                                           BarcodeSequenceIterator)
+                                           BarcodeSequenceFastqIterator)
         with self.assertRaises(ValueError):
             transformer(EMPMultiplexedDirFmt(dirpath, mode='r'))
 

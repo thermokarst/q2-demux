@@ -3,17 +3,18 @@ import shutil
 from q2_types.per_sample_sequences import FastqGzFormat
 
 from .plugin_setup import plugin
-from ._demux import BarcodeSequenceIterator, _read_fastq_seqs
+from ._demux import BarcodeSequenceFastqIterator, _read_fastq_seqs
 from ._format import EMPMultiplexedDirFmt, EMPMultiplexedSingleEndDirFmt
 
 
 @plugin.register_transformer
-def _1(dirfmt: EMPMultiplexedDirFmt) -> BarcodeSequenceIterator:
+def _1(dirfmt: EMPMultiplexedDirFmt) -> BarcodeSequenceFastqIterator:
     barcode_generator = _read_fastq_seqs(
         str(dirfmt.barcodes.view(FastqGzFormat).path))
     sequence_generator = _read_fastq_seqs(
         str(dirfmt.sequences.view(FastqGzFormat).path))
-    result = BarcodeSequenceIterator(barcode_generator, sequence_generator)
+    result = BarcodeSequenceFastqIterator(barcode_generator,
+                                          sequence_generator)
     # ensure that dirfmt stays in scope as long as result does so these
     # generators will work.
     result.__dirfmt = dirfmt

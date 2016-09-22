@@ -27,7 +27,7 @@ def _extract_common_header(header):
     return header.rsplit('/', 1)[0]
 
 
-class BarcodeSequenceIterator(collections.Iterator):
+class BarcodeSequenceFastqIterator(collections.Iterator):
     def __init__(self, barcode_generator, sequence_generator):
         self.barcode_generator = barcode_generator
         self.sequence_generator = sequence_generator
@@ -117,7 +117,7 @@ def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
         fh.write('</body></html>')
 
 
-def emp(seqs: BarcodeSequenceIterator,
+def emp(seqs: BarcodeSequenceFastqIterator,
         barcodes: qiime.MetadataCategory,
         rev_comp_barcodes: bool=False,
         rev_comp_mapping_barcodes: bool=False) \

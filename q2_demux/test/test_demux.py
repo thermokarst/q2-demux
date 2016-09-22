@@ -9,13 +9,13 @@ import qiime
 import numpy as np
 import numpy.testing as npt
 
-from q2_demux._demux import BarcodeSequenceIterator
+from q2_demux._demux import BarcodeSequenceFastqIterator
 from q2_demux import emp, summary
 from q2_types.per_sample_sequences import (
     FastqGzFormat, FastqManifestFormat, YamlFormat)
 
 
-class BarcodeSequenceIteratorTests(unittest.TestCase):
+class BarcodeSequenceFastqIteratorTests(unittest.TestCase):
 
     def test_valid(self):
         barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
@@ -28,7 +28,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                      ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         for i, (barcode, sequence) in enumerate(bsi):
             self.assertEqual(barcode, barcodes[i])
             self.assertEqual(sequence, sequences[i])
@@ -43,7 +43,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                      ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -55,7 +55,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
 
         sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -70,7 +70,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                      ('@s5/1 abc/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -85,7 +85,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                      ('@s4/1 abd/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -95,7 +95,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
         barcodes = [('@s1/2/2 abc/2', 'AAAA', '+', 'YYYY')]
         sequences = [('@s1/1/1 abc/1', 'GGG', '+', 'YYY')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -105,7 +105,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
         barcodes = [('@s1/2 a/2/2', 'AAAA', '+', 'YYYY')]
         sequences = [('@s1/1 a/1/1', 'GGG', '+', 'YYY')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -120,7 +120,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1', 'AAA', '+', 'PPP'),
                      ('@s4/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         for i, (barcode, sequence) in enumerate(bsi):
             self.assertEqual(barcode, barcodes[i])
             self.assertEqual(sequence, sequences[i])
@@ -136,7 +136,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1', 'AAA', '+', 'PPP'),
                      ('@s4/1', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -150,7 +150,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                      ('@s3/1 abc', 'AAA', '+', 'PPP'),
                      ('@s4/1 abc', 'TTT', '+', 'PPP')]
 
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
             list(bsi)
 
@@ -167,7 +167,7 @@ class EmpTests(unittest.TestCase):
                           ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                           ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                           ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
-        self.bsi = BarcodeSequenceIterator(barcodes, self.sequences)
+        self.bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         self.barcode_map = qiime.MetadataCategory(barcode_map)
@@ -291,7 +291,7 @@ class EmpTests(unittest.TestCase):
                     ('@s2/2 abc/2', 'TTTT', '+', 'PPPP'),
                     ('@s3/2 abc/2', 'GGTT', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'GGTT', '+', 'PPPP')]
-        bsi = BarcodeSequenceIterator(barcodes, self.sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
         actual = emp(bsi, self.barcode_map, rev_comp_barcodes=True)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # two per-sample files were written
@@ -336,7 +336,7 @@ class EmpTests(unittest.TestCase):
                     ('@s2/2 abc/2', 'AAAAG', '+', 'PPPPP'),
                     ('@s3/2 abc/2', 'AACCG', '+', 'PPPPP'),
                     ('@s4/2 abc/2', 'AACCG', '+', 'PPPPP')]
-        bsi = BarcodeSequenceIterator(barcodes, self.sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
         actual = emp(bsi, self.barcode_map)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # two per-sample files were written
@@ -387,7 +387,7 @@ class SummaryTests(unittest.TestCase):
                      ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                      ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
                      ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
-        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         barcode_map = qiime.MetadataCategory(barcode_map)
