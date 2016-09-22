@@ -1,13 +1,17 @@
+import os.path
 import gzip
 import yaml
 import itertools
 import collections
 
 import skbio
+import pandas as pd
+import seaborn as sns
 
 import qiime
 from q2_types.per_sample_sequences import (
-    SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat, YamlFormat)
+    SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat, YamlFormat,
+    FastqGzFormat)
 
 
 def _extract_common_header(header):
@@ -46,6 +50,53 @@ class BarcodeSequenceIterator(collections.Iterator):
 
     def __next__(self):
         return next(self.barcode_generator), next(self.sequence_generator)
+
+
+def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
+        -> None:
+    per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
+    per_sample_fastq_counts = {}
+    for per_sample_fastq in per_sample_fastqs:
+        seqs = skbio.io.read(per_sample_fastq[1].open(),
+                             format='fastq',
+                             phred_offset=33, compression='gzip',
+                             constructor=skbio.DNA)
+        count = 0
+        for seq in seqs:
+            count += 1
+        per_sample_fastq_counts[per_sample_fastq[0]] = count
+
+    result = pd.Series(per_sample_fastq_counts)
+    result.name = 'Sequence count'
+    result.index.name = 'Sample filename'
+    result.sort_values(inplace=True, ascending=False)
+    result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
+                  header=True, index=True)
+    ax = sns.distplot(result, kde=False)
+    ax.set_xlabel('Number of sequences')
+    ax.set_ylabel('Frequency')
+    fig = ax.get_figure()
+    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
+    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
+    with open(os.path.join(output_dir, 'index.html'), 'w') as fh:
+        fh.write('<html><body>\n')
+        fh.write(' <h1>Demultiplexed sequence counts summary</h1>\n')
+        fh.write(' <table border="1">\n')
+        fh.write('  <tr><td>Minimum:</td><td>%d</td></tr>\n' % result.min())
+        fh.write('  <tr><td>Median:</td><td>%d</td></tr>\n' % result.median())
+        fh.write('  <tr><td>Mean:</td><td>%d</td></tr>\n' % result.mean())
+        fh.write('  <tr><td>Maximum:</td><td>%d</td></tr>\n' % result.max())
+        fh.write('  <tr><td>Total:</td><td>%d</td></tr>\n' % result.sum())
+        fh.write(' </table>\n\n')
+        fh.write('<a href="demultiplex-summary.pdf">\n')
+        fh.write(' <img src="demultiplex-summary.png">')
+        fh.write(' <p>Download as PDF</p>\n')
+        fh.write('</a>\n\n')
+        fh.write(' <h1>Per-sample sequence counts</h1>\n')
+        fh.write(result.to_frame().to_html())
+        fh.write(' <a href="per-sample-fastq-counts.csv">Download as CSV'
+                 '</a>\n')
+        fh.write('</body></html>')
 
 
 def emp(seqs: BarcodeSequenceIterator,
