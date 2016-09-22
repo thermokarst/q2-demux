@@ -15,23 +15,23 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
 
     def test_valid(self):
         barcodes = [
-            skbio.DNA('AAAA', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AAAA', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [25, 25, 25, 25]}),
-            skbio.DNA('AACC', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's3/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AACC', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's4/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
         ]
         sequences = [
-            skbio.DNA('GGG', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('CCC', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('CCC', metadata={'id': 's2/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [25, 25, 25]}),
-            skbio.DNA('AAA', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AAA', metadata={'id': 's3/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('TTT', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('TTT', metadata={'id': 's4/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
         ]
 
@@ -86,23 +86,23 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
 
     def test_mismatched_id(self):
         barcodes = [
-            skbio.DNA('AAAA', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AAAA', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [25, 25, 25, 25]}),
-            skbio.DNA('AACC', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's3/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AACC', metadata={'id': 's5', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's5/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
         ]
         sequences = [
-            skbio.DNA('GGG', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('CCC', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('CCC', metadata={'id': 's2/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [25, 25, 25]}),
-            skbio.DNA('AAA', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AAA', metadata={'id': 's3/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('TTT', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('TTT', metadata={'id': 's4/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
         ]
 
@@ -112,24 +112,54 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
 
     def test_mismatched_description(self):
         barcodes = [
-            skbio.DNA('AAAA', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AAAA', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [25, 25, 25, 25]}),
-            skbio.DNA('AACC', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's3/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AACC', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's4/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
         ]
         sequences = [
-            skbio.DNA('GGG', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('CCC', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('CCC', metadata={'id': 's2/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [25, 25, 25]}),
-            skbio.DNA('AAA', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AAA', metadata={'id': 's3/1', 'description': 'abc/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
-            skbio.DNA('TTT', metadata={'id': 's4', 'description': 'abd'},
+            skbio.DNA('TTT', metadata={'id': 's4/1', 'description': 'abd/1'},
                       positional_metadata={'quality': [22, 25, 22]}),
+        ]
+
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        with self.assertRaises(ValueError):
+            list(bsi)
+
+    def test_mismatched_handles_slashes_in_id(self):
+        # mismatch is detected as being before the last slash, even if there
+        # is more than one slash
+        barcodes = [
+            skbio.DNA('AAAA', metadata={'id': 's1/2/2', 'description': 'a/2'},
+                      positional_metadata={'quality': [22, 25, 22, 18]}),
+        ]
+        sequences = [
+            skbio.DNA('GGG', metadata={'id': 's1/1/1', 'description': 'a/1'}),
+        ]
+
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+        with self.assertRaises(ValueError):
+            list(bsi)
+
+    def test_mismatched_handles_slashes_in_description(self):
+        # mismatch is detected as being before the last slash, even if there
+        # is more than one slash
+        barcodes = [
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'a/2/2'},
+                      positional_metadata={'quality': [22, 25, 22, 18]}),
+        ]
+        sequences = [
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'a/1/1'}),
         ]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
@@ -141,28 +171,28 @@ class EmpTests(unittest.TestCase):
 
     def setUp(self):
         barcodes = [
-            skbio.DNA('AAAA', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AAAA', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [25, 25, 25, 25]}),
-            skbio.DNA('AACC', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's3/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
-            skbio.DNA('AACC', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('AACC', metadata={'id': 's4/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
         ]
         # setting the dtype on these quality scores as they end up being
         # compared to the output, which gets written as uint8
         self.sequences = [
-            skbio.DNA('GGG', metadata={'id': 's1', 'description': 'abc'},
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'abc/1'},
                       positional_metadata={'quality':
                       np.array([22, 25, 22], dtype='uint8')}),
-            skbio.DNA('CCC', metadata={'id': 's2', 'description': 'abc'},
+            skbio.DNA('CCC', metadata={'id': 's2/1', 'description': 'abc/1'},
                       positional_metadata={'quality':
                       np.array([29, 29, 29], dtype='uint8')}),
-            skbio.DNA('AAA', metadata={'id': 's3', 'description': 'abc'},
+            skbio.DNA('AAA', metadata={'id': 's3/1', 'description': 'abc/1'},
                       positional_metadata={'quality':
                       np.array([22, 20, 22], dtype='uint8')}),
-            skbio.DNA('TTT', metadata={'id': 's4', 'description': 'abc'},
+            skbio.DNA('TTT', metadata={'id': 's4/1', 'description': 'abc/1'},
                       positional_metadata={'quality':
                       np.array([22, 25, 22], dtype='uint8')}),
         ]
@@ -170,6 +200,11 @@ class EmpTests(unittest.TestCase):
 
         barcodes = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         self.barcodes = qiime.MetadataCategory(barcodes)
+
+    def _compare_manifests(self, act_manifest, exp_manifest):
+        # strip comment lines before comparing
+        act_manifest = [l for l in act_manifest if not l.startswith('#')]
+        self.assertEqual(act_manifest, exp_manifest)
 
     def test_valid(self):
         actual = emp(self.bsi, self.barcodes)
@@ -202,7 +237,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -260,7 +295,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -309,7 +344,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -360,7 +395,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
