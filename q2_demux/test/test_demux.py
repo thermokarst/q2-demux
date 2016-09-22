@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+import os.path
+import os
 
 import pandas as pd
 import skbio
@@ -7,7 +10,7 @@ import numpy as np
 import numpy.testing as npt
 
 from q2_demux._demux import BarcodeSequenceIterator
-from q2_demux import emp
+from q2_demux import emp, summary
 from q2_types.per_sample_sequences import (
     FastqGzFormat, FastqManifestFormat, YamlFormat)
 
@@ -135,7 +138,12 @@ class EmpTests(unittest.TestCase):
         self.assertEqual(fields[0][1:], header_line)
         self.assertEqual(fields[1], str(sequence))
         npt.assert_array_equal(self._decode_qual_to_phred(fields[3]),
-                         sequence.positional_metadata['quality'])
+                               sequence.positional_metadata['quality'])
+
+    def _compare_manifests(self, act_manifest, exp_manifest):
+        # strip comment lines before comparing
+        act_manifest = [l for l in act_manifest if not l.startswith('#')]
+        self.assertEqual(act_manifest, exp_manifest)
 
     def test_valid(self):
         actual = emp(self.bsi, self.barcode_map)
@@ -168,7 +176,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -226,7 +234,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -269,7 +277,7 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
@@ -314,9 +322,39 @@ class EmpTests(unittest.TestCase):
         exp_manifest = ['sample-id,filename,direction\n',
                         'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
                         'sample2,sample2_2_L001_R1_001.fastq.gz,forward\n']
-        self.assertEqual(act_manifest, exp_manifest)
+        self._compare_manifests(act_manifest, exp_manifest)
 
         # metadata is correct
         act_metadata = list(actual.metadata.view(YamlFormat).open())
         exp_metadata = ["{phred-offset: 33}\n"]
         self.assertEqual(act_metadata, exp_metadata)
+
+
+class SummaryTests(unittest.TestCase):
+
+    def setUp(self):
+        barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
+                    ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
+                    ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
+                    ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
+
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
+                     ('@s4/1 abc/1', 'TTT', '+', 'PPPP')]
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+
+        barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
+        barcode_map = qiime.MetadataCategory(barcode_map)
+
+        self.demux_data = emp(bsi, barcode_map)
+
+    def test_basic(self):
+        # test that an index.html file is created and that it has size > 0
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = summary(output_dir, self.demux_data)
+
+            self.assertTrue(result is None)
+            index_fp = os.path.join(output_dir, 'index.html')
+            self.assertTrue(os.path.exists(index_fp))
+            self.assertTrue(os.stat(index_fp).st_size > 0)

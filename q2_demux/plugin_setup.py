@@ -36,9 +36,17 @@ plugin.methods.register_function(
     name='Demultiplex sequence data generated with the EMP protocol.',
     description=('Demultiplex sequence data (i.e., map barcode reads to '
                  'sample ids) for data generated with the Earth Microbiome '
-                 'Project amplicon sequencing protocol. Details about this '
-                 'protocol can be found at '
+                 'Project (EMP) amplicon sequencing protocol. Details about '
+                 'this protocol can be found at '
                  'http://www.earthmicrobiome.org/emp-standard-protocols/')
+)
+
+plugin.visualizers.register_function(
+    function=q2_demux.summary,
+    inputs={'data': SampleData[SequencesWithQuality]},
+    parameters={},
+    name='Summarize counts per sample.',
+    description=('Generate a tabular summary of counts per sample.')
 )
 
 importlib.import_module('q2_demux._transformer')

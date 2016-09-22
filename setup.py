@@ -15,12 +15,15 @@ setup(
     version=version,
     packages=find_packages(),
     install_requires=['qiime >= 2.0.0', 'numpy', 'pandas', 'scikit-bio',
-                      'q2-types', ],
+                      'q2-types', 'seaborn'],
     author="Greg Caporaso",
     author_email="gregcaporaso@gmail.com",
     description="Maps sequence barcodes to samples.",
     entry_points={
         "qiime.plugins":
         ["q2-demux=q2_demux.plugin_setup:plugin"]
+    },
+    package_data={
+        'q2_demux.test': ['data/**/*']
     }
 )
