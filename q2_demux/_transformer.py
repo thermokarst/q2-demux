@@ -1,4 +1,6 @@
+import tempfile
 import shutil
+import os.path
 
 from q2_types.per_sample_sequences import FastqGzFormat
 

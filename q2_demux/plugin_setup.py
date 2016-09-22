@@ -46,7 +46,8 @@ plugin.visualizers.register_function(
     inputs={'data': SampleData[SequencesWithQuality]},
     parameters={},
     name='Summarize counts per sample.',
-    description=('Generate a tabular summary of counts per sample.')
+    description=('Generate a summary of counts per sample from sequence data '
+                 'that has already been demultiplexed')
 )
 
 importlib.import_module('q2_demux._transformer')
