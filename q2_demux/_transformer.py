@@ -10,9 +10,9 @@ from ._format import EMPMultiplexedDirFmt, EMPMultiplexedSingleEndDirFmt
 @plugin.register_transformer
 def _1(dirfmt: EMPMultiplexedDirFmt) -> BarcodeSequenceFastqIterator:
     barcode_generator = _read_fastq_seqs(
-        str(dirfmt.barcodes.view(FastqGzFormat).path))
+        str(dirfmt.barcodes.view(FastqGzFormat)))
     sequence_generator = _read_fastq_seqs(
-        str(dirfmt.sequences.view(FastqGzFormat).path))
+        str(dirfmt.sequences.view(FastqGzFormat)))
     result = BarcodeSequenceFastqIterator(barcode_generator,
                                           sequence_generator)
     # ensure that dirfmt stays in scope as long as result does so these

@@ -176,7 +176,7 @@ class EmpTests(unittest.TestCase):
         qual = np.fromstring(qual_str, dtype=np.uint8) - 33
         return qual
 
-    def _compare_sequence_to_fields(self, sequence, fields):
+    def _compare_sequence_to_record(self, sequence, fields):
         header_line = ' '.join([sequence.metadata['id'],
                                 sequence.metadata['description']])
         self.assertEqual(fields[0][1:], header_line)
@@ -202,8 +202,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample1_seqs = list(sample1_seqs)
         self.assertEqual(len(sample1_seqs), 2)
-        self._compare_sequence_to_fields(sample1_seqs[0], self.sequences[0])
-        self._compare_sequence_to_fields(sample1_seqs[1], self.sequences[1])
+        self._compare_sequence_to_record(sample1_seqs[0], self.sequences[0])
+        self._compare_sequence_to_record(sample1_seqs[1], self.sequences[1])
 
         # sequences in sample2 are correct
         sample2_seqs = skbio.io.read(output_fastq[1][1].open(),
@@ -212,8 +212,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample2_seqs = list(sample2_seqs)
         self.assertEqual(len(sample2_seqs), 2)
-        self._compare_sequence_to_fields(sample2_seqs[0], self.sequences[2])
-        self._compare_sequence_to_fields(sample2_seqs[1], self.sequences[3])
+        self._compare_sequence_to_record(sample2_seqs[0], self.sequences[2])
+        self._compare_sequence_to_record(sample2_seqs[1], self.sequences[3])
 
         # manifest is correct
         act_manifest = list(actual.manifest.view(FastqManifestFormat).open())
@@ -260,8 +260,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample1_seqs = list(sample1_seqs)
         self.assertEqual(len(sample1_seqs), 2)
-        self._compare_sequence_to_fields(sample1_seqs[0], self.sequences[0])
-        self._compare_sequence_to_fields(sample1_seqs[1], self.sequences[1])
+        self._compare_sequence_to_record(sample1_seqs[0], self.sequences[0])
+        self._compare_sequence_to_record(sample1_seqs[1], self.sequences[1])
 
         # sequences in sample2 are correct
         sample2_seqs = skbio.io.read(output_fastq[1][1].open(),
@@ -270,8 +270,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample2_seqs = list(sample2_seqs)
         self.assertEqual(len(sample2_seqs), 2)
-        self._compare_sequence_to_fields(sample2_seqs[0], self.sequences[2])
-        self._compare_sequence_to_fields(sample2_seqs[1], self.sequences[3])
+        self._compare_sequence_to_record(sample2_seqs[0], self.sequences[2])
+        self._compare_sequence_to_record(sample2_seqs[1], self.sequences[3])
 
         # manifest is correct
         act_manifest = list(actual.manifest.view(FastqManifestFormat).open())
@@ -303,8 +303,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample1_seqs = list(sample1_seqs)
         self.assertEqual(len(sample1_seqs), 2)
-        self._compare_sequence_to_fields(sample1_seqs[0], self.sequences[0])
-        self._compare_sequence_to_fields(sample1_seqs[1], self.sequences[1])
+        self._compare_sequence_to_record(sample1_seqs[0], self.sequences[0])
+        self._compare_sequence_to_record(sample1_seqs[1], self.sequences[1])
 
         # sequences in sample2 are correct
         sample2_seqs = skbio.io.read(output_fastq[1][1].open(),
@@ -313,8 +313,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample2_seqs = list(sample2_seqs)
         self.assertEqual(len(sample2_seqs), 2)
-        self._compare_sequence_to_fields(sample2_seqs[0], self.sequences[2])
-        self._compare_sequence_to_fields(sample2_seqs[1], self.sequences[3])
+        self._compare_sequence_to_record(sample2_seqs[0], self.sequences[2])
+        self._compare_sequence_to_record(sample2_seqs[1], self.sequences[3])
 
         # manifest is correct
         act_manifest = list(actual.manifest.view(FastqManifestFormat).open())
@@ -348,8 +348,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample1_seqs = list(sample1_seqs)
         self.assertEqual(len(sample1_seqs), 2)
-        self._compare_sequence_to_fields(sample1_seqs[0], self.sequences[0])
-        self._compare_sequence_to_fields(sample1_seqs[1], self.sequences[1])
+        self._compare_sequence_to_record(sample1_seqs[0], self.sequences[0])
+        self._compare_sequence_to_record(sample1_seqs[1], self.sequences[1])
 
         # sequences in sample2 are correct
         sample2_seqs = skbio.io.read(output_fastq[1][1].open(),
@@ -358,8 +358,8 @@ class EmpTests(unittest.TestCase):
                                      constructor=skbio.DNA)
         sample2_seqs = list(sample2_seqs)
         self.assertEqual(len(sample2_seqs), 2)
-        self._compare_sequence_to_fields(sample2_seqs[0], self.sequences[2])
-        self._compare_sequence_to_fields(sample2_seqs[1], self.sequences[3])
+        self._compare_sequence_to_record(sample2_seqs[0], self.sequences[2])
+        self._compare_sequence_to_record(sample2_seqs[1], self.sequences[3])
 
         # manifest is correct
         act_manifest = list(actual.manifest.view(FastqManifestFormat).open())

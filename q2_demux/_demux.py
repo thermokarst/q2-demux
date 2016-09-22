@@ -14,6 +14,9 @@ from q2_types.per_sample_sequences import (
     FastqGzFormat)
 
 
+FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
+
+
 def _read_fastq_seqs(filepath):
     # This function is adapted from @jairideout's SO post:
     # http://stackoverflow.com/a/39302117/3424666
@@ -23,8 +26,19 @@ def _read_fastq_seqs(filepath):
                qual.strip())
 
 
-def _extract_common_header(header):
+def _trim_trailing_slash(header):
     return header.rsplit('/', 1)[0]
+
+
+def _record_to_fastq_header(record):
+    tokens = record[0][1:].split(' ', maxsplit=1)
+    if len(tokens) == 1:
+        id, = tokens
+        description = None
+    else:
+        id, description = tokens
+
+    return FastqHeader(id=id, description=description)
 
 
 class BarcodeSequenceFastqIterator(collections.Iterator):
@@ -34,46 +48,46 @@ class BarcodeSequenceFastqIterator(collections.Iterator):
 
     def __iter__(self):
         # Adapted from q2-types
-        for barcode_fields, sequence_fields in itertools.zip_longest(
+        for barcode_record, sequence_record in itertools.zip_longest(
                 self.barcode_generator, self.sequence_generator):
-            if barcode_fields is None:
+            if barcode_record is None:
                 raise ValueError('More sequences were provided than barcodes.')
-            if sequence_fields is None:
+            if sequence_record is None:
                 raise ValueError('More barcodes were provided than sequences.')
             # The id or description fields may end with "/read-number", which
-            # and read number will differ between the sequence and barcode
-            # reads. Confirm that they are identical up until the last /
-            barcode_header_fields = \
-                barcode_fields[0][1:].split(' ', maxsplit=1)
-            sequence_header_fields = \
-                sequence_fields[0][1:].split(' ', maxsplit=1)
-
-            # confirm that both barcode and sequene have header lines with
-            # an equal number of space-separated fields
-            if len(barcode_header_fields) != len(sequence_header_fields):
-                raise ValueError('Mismatched header lines: %s and %s' %
-                                 (barcode_fields[0], sequence_fields[0]))
+            # will differ between the sequence and barcode reads. Confirm that
+            # they are identical up until the last /
+            barcode_header = _record_to_fastq_header(barcode_record)
+            sequence_header = _record_to_fastq_header(sequence_record)
 
             # confirm that the id fields are equal
-            if _extract_common_header(barcode_header_fields[0]) != \
-               _extract_common_header(sequence_header_fields[0]):
+            if _trim_trailing_slash(barcode_header.id) != \
+               _trim_trailing_slash(sequence_header.id):
                 raise ValueError(
                     'Mismatched sequence ids: %s and %s' %
-                    (_extract_common_header(barcode_header_fields[0]),
-                     _extract_common_header(sequence_header_fields[0])))
+                    (_trim_trailing_slash(barcode_header.id),
+                     _trim_trailing_slash(sequence_header.id)))
 
             # if a description field is present, confirm that they're equal
-            # note that the number of fields can only be 1 or 2, due to
-            # maxsplit
-            if len(barcode_header_fields) == 2:
-                if _extract_common_header(barcode_header_fields[1]) != \
-                   _extract_common_header(sequence_header_fields[1]):
-                    raise ValueError(
-                        'Mismatched sequence descriptions: %s and %s' %
-                        (_extract_common_header(barcode_header_fields[1]),
-                         _extract_common_header(sequence_header_fields[1])))
+            if barcode_header.description is None and \
+               sequence_header.description is None:
+                pass
+            elif barcode_header.description is None:
+                raise ValueError(
+                    'Barcode header lines do not contain description fields '
+                    'but sequence header lines do.')
+            elif sequence_header.description is None:
+                raise ValueError(
+                    'Sequence header lines do not contain description fields '
+                    'but barcode header lines do.')
+            elif _trim_trailing_slash(barcode_header.description) != \
+                    _trim_trailing_slash(sequence_header.description):
+                raise ValueError(
+                    'Mismatched sequence descriptions: %s and %s' %
+                    (_trim_trailing_slash(barcode_header.description),
+                     _trim_trailing_slash(sequence_header.description)))
 
-            yield barcode_fields, sequence_fields
+            yield barcode_record, sequence_record
 
     def __next__(self):
         return next(self.barcode_generator), next(self.sequence_generator)
@@ -156,8 +170,8 @@ def emp(seqs: BarcodeSequenceFastqIterator,
 
     per_sample_fastqs = {}
 
-    for barcode_fields, sequence_fields in seqs:
-        barcode_read = barcode_fields[1]
+    for barcode_record, sequence_record in seqs:
+        barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
         barcode_read = barcode_read[:barcode_len]
@@ -183,7 +197,7 @@ def emp(seqs: BarcodeSequenceFastqIterator,
             per_sample_fastqs[sample_id] = gzip.open(str(path), mode='w')
             manifest_fh.write('%s,%s,%s\n' % (sample_id, path.name, 'forward'))
 
-        fastq_lines = '\n'.join(list(sequence_fields)) + '\n'
+        fastq_lines = '\n'.join(sequence_record) + '\n'
         fastq_lines = fastq_lines.encode('utf-8')
         per_sample_fastqs[sample_id].write(fastq_lines)
 
@@ -193,7 +207,7 @@ def emp(seqs: BarcodeSequenceFastqIterator,
                          'rev_comp_barcodes and/or rev_comp_mapping_barcodes '
                          'options).')
 
-    for sid, fh in per_sample_fastqs.items():
+    for fh in per_sample_fastqs.values():
         fh.close()
 
     manifest_fh.close()
