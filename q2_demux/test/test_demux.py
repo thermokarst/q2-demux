@@ -23,10 +23,10 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
-                     ('@s4/1 abc/1', 'TTT', '+', 'PPPP')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         for i, (barcode, sequence) in enumerate(bsi):
@@ -38,10 +38,10 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                     ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
-                     ('@s4/1 abc/1', 'TTT', '+', 'PPPP')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -53,7 +53,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -65,10 +65,10 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
-                     ('@s5/1 abc/1', 'TTT', '+', 'PPPP')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                     ('@s5/1 abc/1', 'TTT', '+', 'PPP')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -80,10 +80,10 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
-                     ('@s4/1 abd/1', 'TTT', '+', 'PPPP')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1 abd/1', 'TTT', '+', 'PPP')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -93,7 +93,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
         # mismatch is detected as being before the last slash, even if there
         # is more than one slash
         barcodes = [('@s1/2/2 abc/2', 'AAAA', '+', 'YYYY')]
-        sequences = [('@s1/1/1 abc/1', 'GGG', '+', 'YYYY')]
+        sequences = [('@s1/1/1 abc/1', 'GGG', '+', 'YYY')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -103,7 +103,7 @@ class BarcodeSequenceIteratorTests(unittest.TestCase):
         # mismatch is detected as being before the last slash, even if there
         # is more than one slash
         barcodes = [('@s1/2 a/2/2', 'AAAA', '+', 'YYYY')]
-        sequences = [('@s1/1 a/1/1', 'GGG', '+', 'YYYY')]
+        sequences = [('@s1/1 a/1/1', 'GGG', '+', 'YYY')]
 
         bsi = BarcodeSequenceIterator(barcodes, sequences)
         with self.assertRaises(ValueError):
@@ -332,28 +332,25 @@ class EmpTests(unittest.TestCase):
 
 class SummaryTests(unittest.TestCase):
 
-    def setUp(self):
+    def test_basic(self):
         barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
                     ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
                     ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPPP'),
-                     ('@s4/1 abc/1', 'TTT', '+', 'PPPP')]
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                     ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
         bsi = BarcodeSequenceIterator(barcodes, sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         barcode_map = qiime.MetadataCategory(barcode_map)
 
-        self.demux_data = emp(bsi, barcode_map)
-
-    def test_basic(self):
+        demux_data = emp(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
         with tempfile.TemporaryDirectory() as output_dir:
-            result = summary(output_dir, self.demux_data)
-
+            result = summary(output_dir, demux_data)
             self.assertTrue(result is None)
             index_fp = os.path.join(output_dir, 'index.html')
             self.assertTrue(os.path.exists(index_fp))
