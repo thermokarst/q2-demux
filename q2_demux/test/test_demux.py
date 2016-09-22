@@ -1,7 +1,6 @@
 import unittest
-import tempfile
 import os.path
-import os
+import tempfile
 
 import pandas as pd
 import skbio
@@ -380,7 +379,7 @@ class SummaryTests(unittest.TestCase):
     def test_basic(self):
         barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
                     ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
-                    ('@s3/2 abc/2', 'AACC', '+', 'PPPP'),
+                    ('@s3/2 abc/2', 'AAAA', '+', 'PPPP'),
                     ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
         sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
