@@ -67,29 +67,35 @@ def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
         per_sample_fastq_counts[per_sample_fastq[0]] = count
 
     result = pd.Series(per_sample_fastq_counts)
+    result.name = 'Sequence count'
+    result.index.name = 'Sample filename'
     result.sort_values(inplace=True, ascending=False)
-    result.to_csv(os.path.join(output_dir,
-                  'per-sample-fastq-counts.csv'))
+    result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
+                  header=True, index=True)
     ax = sns.distplot(result, kde=False)
     ax.set_xlabel('Number of sequences')
-    ax.set_xlabel('Frequency')
+    ax.set_ylabel('Frequency')
     fig = ax.get_figure()
     fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
     fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
     with open(os.path.join(output_dir, 'index.html'), 'w') as fh:
         fh.write('<html><body>\n')
         fh.write(' <h1>Demultiplexed sequence counts summary</h1>\n')
-        fh.write(' Minimum: %d<br>\n' % result.min())
-        fh.write(' Median: %d<br>\n' % result.max())
-        fh.write(' Mean: %1.3f<br>\n' % result.mean())
-        fh.write(' Maximum: %1.3f<br>\n' % result.median())
-        fh.write(' Total number of sequences demultiplexed: %d<p>\n\n' %
-                 result.sum())
-        fh.write(' <img src="demultiplex-summary.png"><br>\n')
-        fh.write(' <a href="demultiplex-summary.pdf">PDF</a><p>\n\n')
-        fh.write(' <h1>Demultiplexed sequence counts detail</h1>\n')
-        fh.write(result.to_frame('Counts').to_html())
-        fh.write(' <a href="./per-sample-fastq-counts.csv">csv</a>\n')
+        fh.write(' <table border="1">\n')
+        fh.write('  <tr><td>Minimum:</td><td>%d</td></tr>\n' % result.min())
+        fh.write('  <tr><td>Median:</td><td>%d</td></tr>\n' % result.median())
+        fh.write('  <tr><td>Mean:</td><td>%d</td></tr>\n' % result.mean())
+        fh.write('  <tr><td>Maximum:</td><td>%d</td></tr>\n' % result.max())
+        fh.write('  <tr><td>Total:</td><td>%d</td></tr>\n' % result.sum())
+        fh.write(' </table>\n\n')
+        fh.write('<a href="demultiplex-summary.pdf">\n')
+        fh.write(' <img src="demultiplex-summary.png">')
+        fh.write(' <p>Download as PDF</p>\n')
+        fh.write('</a>\n\n')
+        fh.write(' <h1>Per-sample sequence counts</h1>\n')
+        fh.write(result.to_frame().to_html())
+        fh.write(' <a href="per-sample-fastq-counts.csv">Download as CSV'
+                 '</a>\n')
         fh.write('</body></html>')
 
 

@@ -414,7 +414,7 @@ class SummaryTests(unittest.TestCase):
                       positional_metadata={'quality': [22, 25, 22, 18]}),
             skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [25, 25, 25, 25]}),
-            skbio.DNA('AACC', metadata={'id': 's3/2', 'description': 'abc/2'},
+            skbio.DNA('AAAA', metadata={'id': 's3/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
             skbio.DNA('AACC', metadata={'id': 's4/2', 'description': 'abc/2'},
                       positional_metadata={'quality': [22, 25, 22, 18]}),
@@ -448,4 +448,17 @@ class SummaryTests(unittest.TestCase):
             self.assertTrue(result is None)
             index_fp = os.path.join(output_dir, 'index.html')
             self.assertTrue(os.path.exists(index_fp))
-            self.assertTrue(os.stat(index_fp).st_size > 0)
+            self.assertTrue(os.path.getsize(index_fp) > 0)
+            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
+            self.assertTrue(os.path.exists(csv_fp))
+            self.assertTrue(os.path.getsize(csv_fp) > 0)
+            pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
+            self.assertTrue(os.path.exists(pdf_fp))
+            self.assertTrue(os.path.getsize(pdf_fp) > 0)
+            png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
+            self.assertTrue(os.path.exists(png_fp))
+            self.assertTrue(os.path.getsize(png_fp) > 0)
+            with open(index_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<td>Minimum:</td><td>1</td>', html)
+                self.assertIn('<td>Maximum:</td><td>3</td>', html)
