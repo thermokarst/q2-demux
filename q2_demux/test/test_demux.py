@@ -1,4 +1,7 @@
 import unittest
+import tempfile
+import os.path
+import os
 
 import pandas as pd
 import skbio
@@ -6,7 +9,7 @@ import qiime
 import numpy as np
 
 from q2_demux._demux import BarcodeSequenceIterator
-from q2_demux import emp
+from q2_demux import emp, summary
 from q2_types.per_sample_sequences import (
     FastqGzFormat, FastqManifestFormat, YamlFormat)
 
@@ -401,3 +404,61 @@ class EmpTests(unittest.TestCase):
         act_metadata = list(actual.metadata.view(YamlFormat).open())
         exp_metadata = ["{phred-offset: 33}\n"]
         self.assertEqual(act_metadata, exp_metadata)
+
+
+class SummaryTests(unittest.TestCase):
+
+    def setUp(self):
+        barcodes = [
+            skbio.DNA('AAAA', metadata={'id': 's1/2', 'description': 'abc/2'},
+                      positional_metadata={'quality': [22, 25, 22, 18]}),
+            skbio.DNA('AAAA', metadata={'id': 's2/2', 'description': 'abc/2'},
+                      positional_metadata={'quality': [25, 25, 25, 25]}),
+            skbio.DNA('AAAA', metadata={'id': 's3/2', 'description': 'abc/2'},
+                      positional_metadata={'quality': [22, 25, 22, 18]}),
+            skbio.DNA('AACC', metadata={'id': 's4/2', 'description': 'abc/2'},
+                      positional_metadata={'quality': [22, 25, 22, 18]}),
+        ]
+        sequences = [
+            skbio.DNA('GGG', metadata={'id': 's1/1', 'description': 'abc/1'},
+                      positional_metadata={'quality':
+                      np.array([22, 25, 22])}),
+            skbio.DNA('CCC', metadata={'id': 's2/1', 'description': 'abc/1'},
+                      positional_metadata={'quality':
+                      np.array([29, 29, 29])}),
+            skbio.DNA('AAA', metadata={'id': 's3/1', 'description': 'abc/1'},
+                      positional_metadata={'quality':
+                      np.array([22, 20, 22])}),
+            skbio.DNA('TTT', metadata={'id': 's4/1', 'description': 'abc/1'},
+                      positional_metadata={'quality':
+                      np.array([22, 25, 22])}),
+        ]
+        bsi = BarcodeSequenceIterator(barcodes, sequences)
+
+        barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
+        barcode_map = qiime.MetadataCategory(barcode_map)
+
+        self.demux_data = emp(bsi, barcode_map)
+
+    def test_basic(self):
+        # test that an index.html file is created and that it has size > 0
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = summary(output_dir, self.demux_data)
+
+            self.assertTrue(result is None)
+            index_fp = os.path.join(output_dir, 'index.html')
+            self.assertTrue(os.path.exists(index_fp))
+            self.assertTrue(os.path.getsize(index_fp) > 0)
+            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
+            self.assertTrue(os.path.exists(csv_fp))
+            self.assertTrue(os.path.getsize(csv_fp) > 0)
+            pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
+            self.assertTrue(os.path.exists(pdf_fp))
+            self.assertTrue(os.path.getsize(pdf_fp) > 0)
+            png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
+            self.assertTrue(os.path.exists(png_fp))
+            self.assertTrue(os.path.getsize(png_fp) > 0)
+            with open(index_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<td>Minimum:</td><td>1</td>', html)
+                self.assertIn('<td>Maximum:</td><td>3</td>', html)
