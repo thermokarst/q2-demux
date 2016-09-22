@@ -14,6 +14,15 @@ from q2_types.per_sample_sequences import (
     FastqGzFormat)
 
 
+def _read_fastq_seqs(filepath):
+    # This function is adapted from @jairideout's SO post:
+    # http://stackoverflow.com/a/39302117/3424666
+    fh = gzip.open(filepath, 'rt')
+    for seq_header, seq, qual_header, qual in itertools.zip_longest(*[fh] * 4):
+        yield (seq_header.strip(), seq.strip(), qual_header.strip(),
+               qual.strip())
+
+
 def _extract_common_header(header):
     return header.rsplit('/', 1)[0]
 
@@ -75,10 +84,7 @@ def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
     per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
     per_sample_fastq_counts = {}
     for per_sample_fastq in per_sample_fastqs:
-        seqs = skbio.io.read(per_sample_fastq[1].open(),
-                             format='fastq',
-                             phred_offset=33, compression='gzip',
-                             constructor=skbio.DNA)
+        seqs = _read_fastq_seqs(str(per_sample_fastq[1]))
         count = 0
         for seq in seqs:
             count += 1

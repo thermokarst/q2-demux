@@ -1,21 +1,10 @@
 import shutil
-import itertools
-import gzip
 
 from q2_types.per_sample_sequences import FastqGzFormat
 
 from .plugin_setup import plugin
-from ._demux import BarcodeSequenceIterator
+from ._demux import BarcodeSequenceIterator, _read_fastq_seqs
 from ._format import EMPMultiplexedDirFmt, EMPMultiplexedSingleEndDirFmt
-
-
-def _read_fastq_seqs(filepath):
-    # This function is adapted from @jairideout's SO post:
-    # http://stackoverflow.com/a/39302117/3424666
-    fh = gzip.open(filepath, 'rt')
-    for seq_header, seq, qual_header, qual in itertools.zip_longest(*[fh] * 4):
-        yield (seq_header.strip(), seq.strip(), qual_header.strip(),
-               qual.strip())
 
 
 @plugin.register_transformer
