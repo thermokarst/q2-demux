@@ -6,6 +6,7 @@ import collections
 
 import skbio
 import pandas as pd
+import seaborn as sns
 
 import qiime
 from q2_types.per_sample_sequences import (
@@ -64,17 +65,28 @@ def summary(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
         for seq in seqs:
             count += 1
         per_sample_fastq_counts[per_sample_fastq[0]] = count
+
     result = pd.Series(per_sample_fastq_counts)
     result.sort_values(inplace=True, ascending=False)
     result.to_csv(os.path.join(output_dir,
                   'per-sample-fastq-counts.csv'))
+    ax = sns.distplot(result, kde=False)
+    ax.set_xlabel('Number of sequences')
+    ax.set_xlabel('Frequency')
+    fig = ax.get_figure()
+    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
+    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
     with open(os.path.join(output_dir, 'index.html'), 'w') as fh:
         fh.write('<html><body>\n')
         fh.write(' <h1>Demultiplexed sequence counts summary</h1>\n')
         fh.write(' Minimum: %d<br>\n' % result.min())
         fh.write(' Median: %d<br>\n' % result.max())
         fh.write(' Mean: %1.3f<br>\n' % result.mean())
-        fh.write(' Maximum: %1.3f<p>\n\n' % result.median())
+        fh.write(' Maximum: %1.3f<br>\n' % result.median())
+        fh.write(' Total number of sequences demultiplexed: %d<p>\n\n' %
+                 result.sum())
+        fh.write(' <img src="demultiplex-summary.png"><br>\n')
+        fh.write(' <a href="demultiplex-summary.pdf">PDF</a><p>\n\n')
         fh.write(' <h1>Demultiplexed sequence counts detail</h1>\n')
         fh.write(result.to_frame('Counts').to_html())
         fh.write(' <a href="./per-sample-fastq-counts.csv">csv</a>\n')
