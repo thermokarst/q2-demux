@@ -4,7 +4,7 @@ import tempfile
 from q2_demux._format import (EMPMultiplexedDirFmt,
                               EMPMultiplexedSingleEndDirFmt)
 from q2_demux._demux import BarcodeSequenceFastqIterator
-from q2_types.testing import TestPluginBase
+from qiime.plugin.testing import TestPluginBase
 
 
 class TestTransformers(TestPluginBase):
