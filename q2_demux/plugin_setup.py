@@ -19,7 +19,7 @@ plugin = qiime.plugin.Plugin(
     citation_text=None
 )
 
-plugin.register_semantic_type(RawSequences)
+plugin.register_semantic_types(RawSequences)
 
 plugin.register_semantic_type_to_format(
     RawSequences,
