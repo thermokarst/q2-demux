@@ -113,12 +113,15 @@ def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
     result.sort_values(inplace=True, ascending=False)
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
-    ax = sns.distplot(result, kde=False)
-    ax.set_xlabel('Number of sequences')
-    ax.set_ylabel('Frequency')
-    fig = ax.get_figure()
-    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
-    fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
+
+    show_plot = len(per_sample_fastqs) > 1
+    if show_plot:
+        ax = sns.distplot(result, kde=False)
+        ax.set_xlabel('Number of sequences')
+        ax.set_ylabel('Frequency')
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
+        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
 
     html = result.to_frame().to_html(classes='table table-striped table-hover')
     html = html.replace('border="1"', 'border="0"')
@@ -129,7 +132,8 @@ def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
             'median': result.median(),
             'mean': result.mean(),
             'max': result.max(),
-            'sum': result.sum()
+            'sum': result.sum(),
+            'show_plot': show_plot,
         },
         'result': html
     }
