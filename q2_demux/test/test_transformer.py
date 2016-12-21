@@ -1,10 +1,18 @@
+# ----------------------------------------------------------------------------
+# Copyright (c) 2016-2017, QIIME 2 development team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file LICENSE, distributed with this software.
+# ----------------------------------------------------------------------------
+
 import unittest
 import tempfile
 
 from q2_demux._format import (EMPMultiplexedDirFmt,
                               EMPMultiplexedSingleEndDirFmt)
 from q2_demux._demux import BarcodeSequenceFastqIterator
-from qiime.plugin.testing import TestPluginBase
+from qiime2.plugin.testing import TestPluginBase
 
 
 class TestTransformers(TestPluginBase):
@@ -91,6 +99,7 @@ class TestTransformers(TestPluginBase):
                                            EMPMultiplexedDirFmt)
         with self.assertRaises(ValueError):
             transformer(EMPMultiplexedSingleEndDirFmt(dirpath, 'r'))
+
 
 if __name__ == "__main__":
     unittest.main()
