@@ -1,10 +1,18 @@
+# ----------------------------------------------------------------------------
+# Copyright (c) 2016-2017, QIIME 2 development team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file LICENSE, distributed with this software.
+# ----------------------------------------------------------------------------
+
 import unittest
 import os.path
 import tempfile
 
 import pandas as pd
 import skbio
-import qiime
+import qiime2
 import numpy as np
 import numpy.testing as npt
 
@@ -169,7 +177,7 @@ class EmpTests(unittest.TestCase):
         self.bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
-        self.barcode_map = qiime.MetadataCategory(barcode_map)
+        self.barcode_map = qiime2.MetadataCategory(barcode_map)
 
     def _decode_qual_to_phred(self, qual_str):
         # this function is adapted from scikit-bio
@@ -229,25 +237,25 @@ class EmpTests(unittest.TestCase):
 
     def test_variable_length_barcodes(self):
         barcodes = pd.Series(['AAA', 'AACC'], index=['sample1', 'sample2'])
-        barcodes = qiime.MetadataCategory(barcodes)
+        barcodes = qiime2.MetadataCategory(barcodes)
         with self.assertRaises(ValueError):
             emp(self.bsi, barcodes)
 
     def test_duplicate_barcodes(self):
         barcodes = pd.Series(['AACC', 'AACC'], index=['sample1', 'sample2'])
-        barcodes = qiime.MetadataCategory(barcodes)
+        barcodes = qiime2.MetadataCategory(barcodes)
         with self.assertRaises(ValueError):
             emp(self.bsi, barcodes)
 
     def test_no_matched_barcodes(self):
         barcodes = pd.Series(['CCCC', 'GGCC'], index=['sample1', 'sample2'])
-        barcodes = qiime.MetadataCategory(barcodes)
+        barcodes = qiime2.MetadataCategory(barcodes)
         with self.assertRaises(ValueError):
             emp(self.bsi, barcodes)
 
     def test_rev_comp_mapping_barcodes(self):
         barcodes = pd.Series(['TTTT', 'GGTT'], index=['sample1', 'sample2'])
-        barcodes = qiime.MetadataCategory(barcodes)
+        barcodes = qiime2.MetadataCategory(barcodes)
         actual = emp(self.bsi, barcodes, rev_comp_mapping_barcodes=True)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # two per-sample files were written
@@ -389,7 +397,7 @@ class SummarizeTests(unittest.TestCase):
         bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
-        barcode_map = qiime.MetadataCategory(barcode_map)
+        barcode_map = qiime2.MetadataCategory(barcode_map)
 
         demux_data = emp(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
@@ -420,7 +428,7 @@ class SummarizeTests(unittest.TestCase):
         bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
 
         barcode_map = pd.Series(['AAAA'], index=['sample1'])
-        barcode_map = qiime.MetadataCategory(barcode_map)
+        barcode_map = qiime2.MetadataCategory(barcode_map)
 
         demux_data = emp(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0

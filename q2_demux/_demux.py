@@ -1,3 +1,11 @@
+# ----------------------------------------------------------------------------
+# Copyright (c) 2016-2017, QIIME 2 development team.
+#
+# Distributed under the terms of the Modified BSD License.
+#
+# The full license is in the file LICENSE, distributed with this software.
+# ----------------------------------------------------------------------------
+
 import os.path
 import gzip
 import yaml
@@ -9,7 +17,7 @@ import skbio
 import pandas as pd
 import seaborn as sns
 
-import qiime
+import qiime2
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt, FastqManifestFormat, YamlFormat,
     FastqGzFormat)
@@ -141,7 +149,7 @@ def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
 
 
 def emp(seqs: BarcodeSequenceFastqIterator,
-        barcodes: qiime.MetadataCategory,
+        barcodes: qiime2.MetadataCategory,
         rev_comp_barcodes: bool=False,
         rev_comp_mapping_barcodes: bool=False) \
         -> SingleLanePerSampleSingleEndFastqDirFmt:
