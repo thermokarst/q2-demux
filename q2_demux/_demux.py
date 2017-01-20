@@ -12,10 +12,13 @@ import yaml
 import itertools
 import collections
 import pkg_resources
+import random
+import resource
 
 import skbio
 import pandas as pd
 import seaborn as sns
+import psutil
 
 import qiime2
 from q2_types.per_sample_sequences import (
@@ -50,6 +53,23 @@ def _record_to_fastq_header(record):
         id, description = tokens
 
     return FastqHeader(id=id, description=description)
+
+
+def _maintain_open_fh_count(per_sample_fastqs):
+    # Get the allotted resources, and sample id keys
+    open_fh_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+    sample_ids = list(per_sample_fastqs.keys())
+
+    # If the number of open files reaches the allotted resources limit,
+    # close around 15% of the open files. 15% was chosen because if you
+    # only close a single file it will start to have to do it on every loop
+    # and on a 35 file benchmark using a hard coded limit of 10 files,
+    # only closing one file added an increased runtime of 160%
+    while len(psutil.Process().open_files()) >= open_fh_limit:
+        for i in range(round(len(sample_ids) * 0.15)):
+            rand_sample_id = random.choice(sample_ids)
+            if not per_sample_fastqs[rand_sample_id].closed:
+                per_sample_fastqs[rand_sample_id].close()
 
 
 class BarcodeSequenceFastqIterator(collections.Iterator):
@@ -205,8 +225,13 @@ def emp(seqs: BarcodeSequenceFastqIterator,
                                                barcode_id=barcode_id,
                                                lane_number=1,
                                                read_number=1)
-            per_sample_fastqs[sample_id] = gzip.open(str(path), mode='w')
+            _maintain_open_fh_count(per_sample_fastqs)
+            per_sample_fastqs[sample_id] = gzip.open(str(path), mode='a')
             manifest_fh.write('%s,%s,%s\n' % (sample_id, path.name, 'forward'))
+
+        if per_sample_fastqs[sample_id].closed:
+            _maintain_open_fh_count(per_sample_fastqs)
+            per_sample_fastqs[sample_id] = gzip.open(str(path), mode='a')
 
         fastq_lines = '\n'.join(sequence_record) + '\n'
         fastq_lines = fastq_lines.encode('utf-8')
