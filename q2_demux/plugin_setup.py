@@ -121,7 +121,8 @@ plugin.methods.register_function(
 
 plugin.visualizers.register_function(
     function=q2_demux.summarize,
-    inputs={'data': SampleData[SequencesWithQuality]},
+    inputs={'data':
+            SampleData[SequencesWithQuality | PairedEndSequencesWithQuality]},
     parameters={},
     input_descriptions={
         'data': 'The demultiplexed sequences to be summarized.'
