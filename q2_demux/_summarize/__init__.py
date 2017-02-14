@@ -6,12 +6,6 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-from ._demux import emp_single, emp_paired
-from ._summarize import summarize
-from ._version import get_versions
+from ._visualizer import summarize
 
-
-__version__ = get_versions()['version']
-del get_versions
-
-__all__ = ['emp_single', 'emp_paired', 'summarize']
+__all__ = ['summarize']

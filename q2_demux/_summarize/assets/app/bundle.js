@@ -1,0 +1,1 @@
+var app=webpackJsonpapp([0],[function(e,n){"use strict";Object.defineProperty(n,"__esModule",{value:!0});n.init=function(){}}]);
