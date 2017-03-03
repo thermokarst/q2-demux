@@ -29,7 +29,6 @@ const plot = (data, svg, props) => {
     .whiskers(iqr(1.5))
     .height(props.height)
     .domain([0, 100])
-    .width(0.7)
     .showLabels(false);
 
   function iqr(k) {
@@ -55,10 +54,12 @@ const plot = (data, svg, props) => {
   //     .attr('fill-opacity', 0.5)
   //     .call(chart);
   svg.selectAll(".box")
+    .attr('font', '10px sans-serif')
     .data(data)
   .enter().append("g")
+    .attr('class', 'boxplot')
     .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
-    .call(chart);
+    .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2));
 
   svg.append("g")
       .attr("class", "axis axis--x")
@@ -99,7 +100,8 @@ const plot = (data, svg, props) => {
     var t = svg.transition().duration(750);
     svg.select(".axis--x").transition(t).call(xAxis);
     svg.select(".axis--y").transition(t).call(yAxis);
-    svg.selectAll(".box").transition(t)
+    svg.selectAll(".boxplot").transition(t)
+      .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2))
       .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
   }
 }

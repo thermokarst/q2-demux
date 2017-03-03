@@ -4,7 +4,7 @@ export default function box (d3) {
 d3.box = function() {
   var width = 1,
       height = 1,
-      duration = 0,
+      duration = 750,
       domain = null,
       value = Number,
       whiskers = boxWhiskers,
@@ -67,13 +67,16 @@ d3.box = function() {
           .data(whiskerData ? [whiskerData] : []);
 	 //vertical line
 
-      center.enter().insert("line", "rect")
+      center.enter().append("line", "rect")
           .attr("class", "center")
           .attr("x1", width / 2)
           .attr("y1", function(d) { return x0(d[0]); })
           .attr("x2", width / 2)
           .attr("y2", function(d) { return x0(d[1]); })
           .style("opacity", 1e-6)
+          .attr('stroke-dasharray', '3,3')
+          .attr('stroke', 'black')
+          .attr('stroke-width', '1px')
         .transition()
           .duration(duration)
           .style("opacity", 1)
@@ -83,6 +86,8 @@ d3.box = function() {
       center.transition()
           .duration(duration)
           .style("opacity", 1)
+          .attr("x1", width / 2)
+          .attr("x2", width / 2)
           .attr("y1", function(d) { return x1(d[0]); })
           .attr("y2", function(d) { return x1(d[1]); });
 
@@ -95,7 +100,7 @@ d3.box = function() {
 
       // Update innerquartile box.
       var box = g.selectAll("rect.box")
-          .data([quartileData]);
+          .data([quartileData])
 
       box.enter().append("rect")
           .attr("class", "box")
@@ -103,6 +108,9 @@ d3.box = function() {
           .attr("y", function(d) { return x0(d[2]); })
           .attr("width", width)
           .attr("height", function(d) { return x0(d[0]) - x0(d[2]); })
+          .attr('fill', 'steelblue')
+          .attr('stroke', 'black')
+          .attr('stroke-width', '1px')
         .transition()
           .duration(duration)
           .attr("y", function(d) { return x1(d[2]); })
@@ -111,6 +119,7 @@ d3.box = function() {
       box.transition()
           .duration(duration)
           .attr("y", function(d) { return x1(d[2]); })
+          .attr('width', width)
           .attr("height", function(d) { return x1(d[0]) - x1(d[2]); });
 
       // Update median line.
@@ -123,6 +132,8 @@ d3.box = function() {
           .attr("y1", x0)
           .attr("x2", width)
           .attr("y2", x0)
+          .attr('stroke', 'black')
+          .attr('stroke-width', '1px')
         .transition()
           .duration(duration)
           .attr("y1", x1)
@@ -130,6 +141,7 @@ d3.box = function() {
 
       medianLine.transition()
           .duration(duration)
+          .attr("x2", width)
           .attr("y1", x1)
           .attr("y2", x1);
 
@@ -144,6 +156,8 @@ d3.box = function() {
           .attr("x2", 0 + width)
           .attr("y2", x0)
           .style("opacity", 1e-6)
+          .attr('stroke', 'black')
+          .attr('stroke-width', '1px')
         .transition()
           .duration(duration)
           .attr("y1", x1)
@@ -152,6 +166,7 @@ d3.box = function() {
 
       whisker.transition()
           .duration(duration)
+          .attr("x2", 0 + width)
           .attr("y1", x1)
           .attr("y2", x1)
           .style("opacity", 1);
@@ -169,10 +184,12 @@ d3.box = function() {
 
       outlier.enter().insert("circle", "text")
           .attr("class", "outlier")
-          .attr("r", 1)
+          .attr("r", width / 4)
           .attr("cx", width / 2)
           .attr("cy", function(i) { return x0(d[i]); })
           .style("opacity", 1e-6)
+          .attr('fill', 'none')
+          .attr('stroke', 'black')
         .transition()
           .duration(duration)
           .attr("cy", function(i) { return x1(d[i]); })
@@ -181,6 +198,8 @@ d3.box = function() {
       outlier.transition()
           .duration(duration)
           .attr("cy", function(i) { return x1(d[i]); })
+          .attr("r", width / 8)
+          .attr("cx", width / 2)
           .style("opacity", 1);
 
       outlier.exit().transition()
