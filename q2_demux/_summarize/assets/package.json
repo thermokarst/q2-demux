@@ -20,8 +20,8 @@
     "webpack-dev-server": "^1.16.2"
   },
   "eslintConfig": {
-  "extends": "airbnb",
-  "env": {
+    "extends": "airbnb",
+    "env": {
       "browser": true
     }
   },

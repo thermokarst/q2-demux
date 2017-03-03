@@ -6,6 +6,8 @@
 // The full license is in the file LICENSE, distributed with this software.
 // ----------------------------------------------------------------------------
 
-export const init = () => { // eslint-disable-line import/prefer-default-export
+import initializePlot from './plot';
 
+export const init = (qual_scores) => { // eslint-disable-line import/prefer-default-export
+  initializePlot(qual_scores);
 };

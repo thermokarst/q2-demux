@@ -8,31 +8,41 @@
 
 import os
 import pkg_resources
+import shutil
 
+import skbio
 import pandas as pd
 import seaborn as sns
+import numpy as np
 
 from q2_types.per_sample_sequences import (
-    SingleLanePerSampleSingleEndFastqDirFmt, FastqGzFormat
+    SingleLanePerSampleSingleEndFastqDirFmt, FastqGzFormat, PerSampleDNAIterators
 )
 from q2_demux._demux import _read_fastq_seqs
 import q2templates
 
-
 TEMPLATES = pkg_resources.resource_filename('q2_demux', '_summarize')
+
+
+def _decode_qual_to_phred(qual_str):
+    # this function is adapted from scikit-bio
+    qual = np.fromstring(qual_str, dtype=np.uint8) - 33
+    return qual
 
 
 def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
         -> None:
     per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
     per_sample_fastq_counts = {}
+    quality_scores = {}
     for relpath, view in per_sample_fastqs:
-        seqs = _read_fastq_seqs(str(view))
-        count = 0
-        for seq in seqs:
-            count += 1
+        seqs = list(_read_fastq_seqs(str(view)))
+        for s in seqs:
+            quality_scores[s[0]] = _decode_qual_to_phred(s[3])
         sample_name = relpath.name.split('_', 1)[0]
-        per_sample_fastq_counts[sample_name] = count
+        per_sample_fastq_counts[sample_name] = len(seqs)
+
+    subsample_seqs = pd.DataFrame.from_dict(quality_scores, orient='index').sample(10)
 
     result = pd.Series(per_sample_fastq_counts)
     result.name = 'Sequence count'
@@ -72,3 +82,11 @@ def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
     }
     templates = [index, overview_template, quality_template]
     q2templates.render(templates, output_dir, context=context)
+
+    shutil.copytree(os.path.join(TEMPLATES, 'assets', 'app'),
+                    os.path.join(output_dir, 'app'))
+
+    with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
+        fh.write("app.init(")
+        subsample_seqs.to_json(fh, orient='values')
+        fh.write(');')
