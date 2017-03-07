@@ -8,7 +8,10 @@
 
 import shutil
 
-from q2_types.per_sample_sequences import FastqGzFormat
+from q2_types.per_sample_sequences import (
+    SingleLanePerSampleSingleEndFastqDirFmt,
+    SingleLanePerSamplePairedEndFastqDirFmt,
+    FastqGzFormat)
 
 from .plugin_setup import plugin
 from ._demux import (BarcodeSequenceFastqIterator,
@@ -16,6 +19,7 @@ from ._demux import (BarcodeSequenceFastqIterator,
 from ._format import (EMPMultiplexedDirFmt,
                       EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
                       EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
+from ._summarize import _PlotQualView
 
 
 @plugin.register_transformer
@@ -83,3 +87,14 @@ def _4(dirfmt: EMPPairedEndDirFmt) -> BarcodePairedSequenceFastqIterator:
     # generators will work.
     result.__dirfmt = dirfmt
     return result
+
+
+# TODO: Remove _PlotQualView once QIIME 2 #220 completed
+@plugin.register_transformer
+def _5(dirfmt: SingleLanePerSampleSingleEndFastqDirFmt) -> _PlotQualView:
+    return _PlotQualView(dirfmt, paired=False)
+
+
+@plugin.register_transformer
+def _6(dirfmt: SingleLanePerSamplePairedEndFastqDirFmt) -> _PlotQualView:
+    return _PlotQualView(dirfmt, paired=True)

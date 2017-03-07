@@ -6,26 +6,22 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import os.path
 import gzip
 import yaml
 import itertools
 import collections
 import collections.abc
-import pkg_resources
 import random
 import resource
 
 import skbio
-import pandas as pd
-import seaborn as sns
 import psutil
 
 import qiime2
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
-    FastqManifestFormat, YamlFormat, FastqGzFormat)
+    FastqManifestFormat, YamlFormat)
 
 
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])

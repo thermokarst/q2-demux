@@ -9,15 +9,13 @@
 import os
 import pkg_resources
 import shutil
+import random
 
-import skbio
 import pandas as pd
 import seaborn as sns
 import numpy as np
 
-from q2_types.per_sample_sequences import (
-    SingleLanePerSampleSingleEndFastqDirFmt, FastqGzFormat, PerSampleDNAIterators
-)
+from q2_types.per_sample_sequences import FastqGzFormat
 from q2_demux._demux import _read_fastq_seqs
 import q2templates
 
@@ -30,19 +28,31 @@ def _decode_qual_to_phred(qual_str):
     return qual
 
 
-def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
-        -> None:
+# TODO: Remove _PlotQualView once QIIME 2 #220 completed
+class _PlotQualView:
+    """
+    A very simple pass-through view which is made up of a single-end or
+    paired-end directory format with a bool indicating if single or paired.
+    """
+    def __init__(self, directory_format, paired):
+        self._directory_format = directory_format
+        self.directory = str(directory_format)
+        self.paired = paired
+
+
+def summarize(output_dir: str, data: _PlotQualView) -> None:
+    paired = data.paired
+    data = data._directory_format
+
     per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
     per_sample_fastq_counts = {}
-    quality_scores = {}
+    sample_map = {}
     for relpath, view in per_sample_fastqs:
-        seqs = list(_read_fastq_seqs(str(view)))
-        for s in seqs:
-            quality_scores[s[0]] = _decode_qual_to_phred(s[3])
+        count = 0
+        for seq in _read_fastq_seqs(str(view)):
+            count += 1
         sample_name = relpath.name.split('_', 1)[0]
-        per_sample_fastq_counts[sample_name] = len(seqs)
-
-    subsample_seqs = pd.DataFrame.from_dict(quality_scores, orient='index').sample(10)
+        per_sample_fastq_counts[sample_name] = count
 
     result = pd.Series(per_sample_fastq_counts)
     result.name = 'Sequence count'
@@ -50,6 +60,21 @@ def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
     result.sort_values(inplace=True, ascending=False)
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
+
+    quality_scores = {}
+    subsample_ns = sorted(random.sample(range(1, result.sum() + 1), 10))
+    target = subsample_ns.pop(0)
+    current = 1
+    for relpath, view in per_sample_fastqs:
+        for seq in _read_fastq_seqs(str(view)):
+            if current == target:
+                quality_scores[seq[0]] = _decode_qual_to_phred(seq[3])
+                if subsample_ns:
+                    target = subsample_ns.pop(0)
+                else:
+                    break
+            current += 1
+    subsample_seqs = pd.DataFrame.from_dict(quality_scores, orient='index')
 
     show_plot = len(per_sample_fastqs) > 1
     if show_plot:

@@ -44,19 +44,18 @@ const plot = (data, svg, props) => {
     }
   }
 
-  // svg.selectAll("circle")
-  //   .data(data)
-  //   .enter().append("circle")
-  //     .attr("cx", d => x(d.x))
-  //     .attr("cy", d => y(d.y))
-  //     .attr("r", 2.5)
-  //     .attr("fill", d => d3.interpolateViridis(d.y / 100))
-  //     .attr('fill-opacity', 0.5)
-  //     .call(chart);
+  svg.append("g")
+      .attr("class", "brush")
+      .attr('z-index', -1)
+      .call(brush);
+
   svg.selectAll(".box")
     .attr('font', '10px sans-serif')
     .data(data)
   .enter().append("g")
+    .on('click', function(d) {
+      console.log(d)
+    })
     .attr('class', 'boxplot')
     .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
     .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2));
@@ -74,9 +73,19 @@ const plot = (data, svg, props) => {
   svg.selectAll(".domain")
       .style("display", "none");
 
-  svg.append("g")
-      .attr("class", "brush")
-      .call(brush);
+  svg.append('text')
+      .attr("transform", "rotate(-90)")
+      .attr("x", 0 - (props.height / 2))
+      .attr('dy', '1em')
+      .style("text-anchor", "middle")
+      .text("Quality Score");
+
+  svg.append('text')
+      .attr("x", props.width / 2)
+      .attr('y', props.height)
+      .attr('dy', '1em')
+      .style("text-anchor", "middle")
+      .text("Sequence Base");
 
   function brushEnded() {
     var s = d3.event.selection;

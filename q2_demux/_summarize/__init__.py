@@ -5,7 +5,7 @@
 #
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
+# TODO: Remove _PlotQualView once QIIME 2 #220 completed
+from ._visualizer import summarize, _PlotQualView
 
-from ._visualizer import summarize
-
-__all__ = ['summarize']
+__all__ = ['summarize', '_PlotQualView']
