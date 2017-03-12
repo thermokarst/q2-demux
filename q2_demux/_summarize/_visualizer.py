@@ -6,6 +6,7 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
+import collections
 import os
 import pkg_resources
 import shutil
@@ -40,18 +41,31 @@ class _PlotQualView:
         self.paired = paired
 
 
-def summarize(output_dir: str, data: _PlotQualView) -> None:
+def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     paired = data.paired
     data = data._directory_format
 
-    per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
+    fwd = []
+    rev = []
+    with open(os.path.join(str(data), data.manifest.name)) as fh:
+        # Skip header
+        fh.readline()
+        for line in fh.readlines():
+            manifest_line = line.strip().split(',')
+            if manifest_line[2] == 'forward':
+                fwd.append(os.path.join(str(data), manifest_line[1]))
+            elif manifest_line[2] == 'reverse':
+                rev.append(os.path.join(str(data), manifest_line[1]))
+            else:
+                raise ValueError('Improperly formated manifest found on '
+                                 'line %s' % line)
+
     per_sample_fastq_counts = {}
-    sample_map = {}
-    for relpath, view in per_sample_fastqs:
+    for file in fwd:
         count = 0
-        for seq in _read_fastq_seqs(str(view)):
+        for seq in _read_fastq_seqs(file):
             count += 1
-        sample_name = relpath.name.split('_', 1)[0]
+        sample_name = os.path.basename(file).split('_', 1)[0]
         per_sample_fastq_counts[sample_name] = count
 
     result = pd.Series(per_sample_fastq_counts)
@@ -61,22 +75,34 @@ def summarize(output_dir: str, data: _PlotQualView) -> None:
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
 
-    quality_scores = {}
-    subsample_ns = sorted(random.sample(range(1, result.sum() + 1), 10))
+    quality_scores = collections.OrderedDict()
+    subsample_ns = sorted(random.sample(range(1, result.sum() + 1), n))
     target = subsample_ns.pop(0)
     current = 1
-    for relpath, view in per_sample_fastqs:
-        for seq in _read_fastq_seqs(str(view)):
-            if current == target:
-                quality_scores[seq[0]] = _decode_qual_to_phred(seq[3])
-                if subsample_ns:
-                    target = subsample_ns.pop(0)
-                else:
-                    break
-            current += 1
+    if paired:
+        for f, r in zip(sorted(fwd), sorted(rev)):
+            for seq1, seq2 in zip(_read_fastq_seqs(f), _read_fastq_seqs(r)):
+                if current == target:
+                    quality_scores[seq1[0]] = [_decode_qual_to_phred(seq1[3]),
+                                               _decode_qual_to_phred(seq2[3])]
+                    if subsample_ns:
+                        target = subsample_ns.pop(0)
+                    else:
+                        break
+                current += 1
+    else:
+        for file in fwd:
+            for seq in _read_fastq_seqs(file):
+                if current == target:
+                    quality_scores[seq[0]] = _decode_qual_to_phred(seq[3])
+                    if subsample_ns:
+                        target = subsample_ns.pop(0)
+                    else:
+                        break
+                current += 1
     subsample_seqs = pd.DataFrame.from_dict(quality_scores, orient='index')
 
-    show_plot = len(per_sample_fastqs) > 1
+    show_plot = len(fwd) > 1
     if show_plot:
         ax = sns.distplot(result, kde=False)
         ax.set_xlabel('Number of sequences')
@@ -114,4 +140,6 @@ def summarize(output_dir: str, data: _PlotQualView) -> None:
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
         subsample_seqs.to_json(fh, orient='values')
+        if paired:
+            fh.write(', true')
         fh.write(');')

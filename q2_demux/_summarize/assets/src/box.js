@@ -117,11 +117,14 @@ d3.box = function() {
           .attr('stroke-width', '1px')
           .on('mouseover', function(d) {
             d3.select(this)
-              .attr('fill', 'lightgray');
+              .attr('fill', 'skyblue');
           })
           .on('mouseout', function() {
             d3.select(this)
               .attr('fill', 'steelblue');
+          })
+          .on('click', function(d) {
+            console.log(d);
           })
         .transition()
           .duration(duration)

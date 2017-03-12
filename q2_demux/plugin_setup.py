@@ -123,11 +123,13 @@ plugin.visualizers.register_function(
     function=q2_demux.summarize,
     inputs={'data':
             SampleData[SequencesWithQuality | PairedEndSequencesWithQuality]},
-    parameters={},
+    parameters={'n': qiime2.plugin.Int},
     input_descriptions={
         'data': 'The demultiplexed sequences to be summarized.'
     },
-    parameter_descriptions={},
+    parameter_descriptions={
+        'n': 'The number of sequences to subsample for quality plots.'
+    },
     name='Summarize counts per sample.',
     description=('Generate a summary of counts per sample from sequence data '
                  'that has already been demultiplexed')

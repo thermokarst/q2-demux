@@ -15,11 +15,10 @@ const plot = (data, svg, props) => {
   const x0 = [0, maxX];
   const y0 = [0, 100];
   const x = d3.scaleLinear().domain(x0).range([props.margin.left, props.width]);
-  // const x = d3.scaleBand().domain(data.map(d => d[0])).rangeRound([0, props.width])
   const y = d3.scaleLinear().domain(y0).range([props.height - props.margin.bottom, props.margin.top]);
 
-  var xAxis = d3.axisTop(x).ticks(12),
-      yAxis = d3.axisRight(y).ticks(12 * props.height / props.width);
+  const xAxis = d3.axisTop(x).ticks(12);
+  const yAxis = d3.axisRight(y).ticks(12 * props.height / props.width);
 
   const brush = d3.brush().on("end", brushEnded);
   let idleTimeout;
@@ -53,9 +52,6 @@ const plot = (data, svg, props) => {
     .attr('font', '10px sans-serif')
     .data(data)
   .enter().append("g")
-    .on('click', function(d) {
-      console.log(d)
-    })
     .attr('class', 'boxplot')
     .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
     .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2));
