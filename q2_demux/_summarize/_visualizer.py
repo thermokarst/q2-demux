@@ -16,7 +16,6 @@ import pandas as pd
 import seaborn as sns
 import numpy as np
 
-from q2_types.per_sample_sequences import FastqGzFormat
 from q2_demux._demux import _read_fastq_seqs
 import q2templates
 
@@ -52,13 +51,14 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
         fh.readline()
         for line in fh.readlines():
             manifest_line = line.strip().split(',')
-            if manifest_line[2] == 'forward':
-                fwd.append(os.path.join(str(data), manifest_line[1]))
-            elif manifest_line[2] == 'reverse':
-                rev.append(os.path.join(str(data), manifest_line[1]))
-            else:
-                raise ValueError('Improperly formated manifest found on '
-                                 'line %s' % line)
+            if len(manifest_line) == 3:
+                if manifest_line[2] == 'forward':
+                    fwd.append(os.path.join(str(data), manifest_line[1]))
+                elif manifest_line[2] == 'reverse':
+                    rev.append(os.path.join(str(data), manifest_line[1]))
+                else:
+                    raise ValueError('Improperly formated manifest found on '
+                                     'line %s' % line)
 
     per_sample_fastq_counts = {}
     for file in fwd:
@@ -75,7 +75,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
 
-    quality_scores = collections.OrderedDict()
+    quality_scores = collections.defaultdict(list)
     subsample_ns = sorted(random.sample(range(1, result.sum() + 1), n))
     target = subsample_ns.pop(0)
     current = 1
@@ -83,24 +83,33 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
         for f, r in zip(sorted(fwd), sorted(rev)):
             for seq1, seq2 in zip(_read_fastq_seqs(f), _read_fastq_seqs(r)):
                 if current == target:
-                    quality_scores[seq1[0]] = [_decode_qual_to_phred(seq1[3]),
-                                               _decode_qual_to_phred(seq2[3])]
+                    quality_scores['forward'].append(
+                        _decode_qual_to_phred(seq1[3]))
+                    quality_scores['reverse'].append(
+                        _decode_qual_to_phred(seq2[3]))
                     if subsample_ns:
                         target = subsample_ns.pop(0)
                     else:
+                        target = -1
                         break
                 current += 1
+            if target == -1:
+                break
     else:
-        for file in fwd:
-            for seq in _read_fastq_seqs(file):
+        for f in fwd:
+            for seq in _read_fastq_seqs(f):
                 if current == target:
-                    quality_scores[seq[0]] = _decode_qual_to_phred(seq[3])
+                    quality_scores['forward'].append(
+                        _decode_qual_to_phred(seq[3]))
                     if subsample_ns:
                         target = subsample_ns.pop(0)
                     else:
+                        target = -1
                         break
                 current += 1
-    subsample_seqs = pd.DataFrame.from_dict(quality_scores, orient='index')
+            if target == -1:
+                break
+    subsample_seqs = pd.DataFrame.from_dict(quality_scores)
 
     show_plot = len(fwd) > 1
     if show_plot:
@@ -126,6 +135,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
         },
         'result': html,
         'show_plot': show_plot,
+        'paired': paired,
         'tabs': [{'title': 'Overview',
                   'url': 'overview.html'},
                  {'title': 'Interactive Quality Plot',
@@ -139,7 +149,5 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
 
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
-        subsample_seqs.to_json(fh, orient='values')
-        if paired:
-            fh.write(', true')
+        subsample_seqs.to_json(fh, orient="records")
         fh.write(');')

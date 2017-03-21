@@ -6,7 +6,16 @@
 
 {% block content %}
 <div class="row">
-  <div id="chartContainer" class="col-xs-12"></div>
+  {% if paired %}
+  <div id="forwardContainer" class="col-xs-12 col-md-6">
+    <h5 class="text-center">Forward Reads</h5>
+  </div>
+  <div id="reverseContainer" class="col-xs-12 col-md-6">
+    <h5 class="text-center">Reverse Reads</h5>
+  </div>
+  {% else %}
+  <div id="forwardContainer" class="col-xs-12"></div>
+  {% endif %}
 </div>
 <script src="./app/bundle.js" charset="utf-8"></script>
 <script src="./data.jsonp" charset="utf-8"></script>

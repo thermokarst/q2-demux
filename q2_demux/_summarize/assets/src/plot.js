@@ -10,15 +10,21 @@ import * as d3 from 'd3';
 import box from './box';
 
 
-const plot = (data, svg, props) => {
+const plot = (data, props, container) => {
+  const svg = d3
+    .select(container)
+  .append('svg')
+    .attr('width', props.width + props.margin.left + props.margin.right)
+    .attr('height', props.height + props.margin.top + props.margin.bottom);
+
   const maxX = d3.max(data, d => d[0]);
   const x0 = [0, maxX];
   const y0 = [0, 100];
   const x = d3.scaleLinear().domain(x0).range([props.margin.left, props.width]);
   const y = d3.scaleLinear().domain(y0).range([props.height - props.margin.bottom, props.margin.top]);
 
-  const xAxis = d3.axisTop(x).ticks(12);
-  const yAxis = d3.axisRight(y).ticks(12 * props.height / props.width);
+  const xAxis = d3.axisBottom(x).ticks(12);
+  const yAxis = d3.axisLeft(y).ticks(12 * props.height / props.width);
 
   const brush = d3.brush().on("end", brushEnded);
   let idleTimeout;
@@ -26,7 +32,7 @@ const plot = (data, svg, props) => {
 
   var chart = d3.box()
     .whiskers(iqr(1.5))
-    .height(props.height)
+    .height(props.height - props.margin.bottom - props.margin.top)
     .domain([0, 100])
     .showLabels(false);
 
@@ -58,12 +64,12 @@ const plot = (data, svg, props) => {
 
   svg.append("g")
       .attr("class", "axis axis--x")
-      .attr("transform", "translate(0," + (props.height - 10) + ")")
+      .attr("transform", `translate(0, ${(props.height - props.margin.bottom)})`)
       .call(xAxis);
 
   svg.append("g")
       .attr("class", "axis axis--y")
-      .attr("transform", "translate(10,0)")
+      .attr("transform", `translate(${props.margin.left},0)`)
       .call(yAxis);
 
   svg.selectAll(".domain")
@@ -73,6 +79,7 @@ const plot = (data, svg, props) => {
       .attr("transform", "rotate(-90)")
       .attr("x", 0 - (props.height / 2))
       .attr('dy', '1em')
+      .attr('font-size', '10px')
       .style("text-anchor", "middle")
       .text("Quality Score");
 
@@ -80,6 +87,7 @@ const plot = (data, svg, props) => {
       .attr("x", props.width / 2)
       .attr('y', props.height)
       .attr('dy', '1em')
+      .attr('font-size', '10px')
       .style("text-anchor", "middle")
       .text("Sequence Base");
 
@@ -106,7 +114,8 @@ const plot = (data, svg, props) => {
     svg.select(".axis--x").transition(t).call(xAxis);
     svg.select(".axis--y").transition(t).call(yAxis);
     svg.selectAll(".boxplot").transition(t)
-      .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2))
+      .call(chart.domain(y.domain())
+                 .width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2))
       .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
   }
 }
@@ -114,34 +123,30 @@ const plot = (data, svg, props) => {
 const initializePlot = (data) => {
   box(d3);
   const margin = { top: 10, right: 30, bottom: 30, left: 30 };
-  const width = d3.select('#chartContainer').node().offsetWidth;
+  const width = d3.select('#forwardContainer').node().offsetWidth;
   const props = {
     margin,
     width: width - margin.left - margin.right,
     height: ((width * 9) / 16) - margin.top - margin.bottom };
 
-  const svg = d3
-    .select('#chartContainer')
-  .append('svg')
-    .attr('width', props.width + props.margin.left + props.margin.right)
-    .attr('height', props.height + props.margin.top + props.margin.bottom);
-
-  const maxLen = d3.max(data, d => d.length);
-  const processedData = new Array(maxLen);
-  for (const point of data) {
-    for (let i = 0; i < point.length; i++) {
-      processedData[i] = processedData[i] || new Array(2);
-      if (!processedData[i][0]) {
-        processedData[i][0] = i
+  for (let direction of Object.keys(data[0])) {
+    const maxLen = d3.max(data, d => d[direction].length);
+    const processedData = new Array(maxLen);
+    for (const point of data) {
+      for (let i = 0; i < point[direction].length; i++) {
+        processedData[i] = processedData[i] || new Array(2);
+        if (!processedData[i][0]) {
+          processedData[i][0] = i
+        }
+        if (!processedData[i][1]){
+          processedData[i][1] = []
+        }
+        processedData[i][1].push(point.forward[i]);
       }
-      if (!processedData[i][1]){
-        processedData[i][1] = []
-      }
-      processedData[i][1].push(point[i]);
     }
-  }
 
-  plot(processedData, svg, props);
+    plot(processedData, props, `#${direction}Container`);
+  }
 }
 
 export default initializePlot;

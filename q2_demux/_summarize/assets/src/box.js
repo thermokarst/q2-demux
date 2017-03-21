@@ -61,6 +61,7 @@ d3.box = function() {
       // Stash the new scale.
       this.__chart__ = x1;
 
+
       // Note: the box, median, and box tick elements are fixed in number,
       // so we only have to handle enter and update. In contrast, the outliers
       // and other elements are variable, so we need to exit them! Variable
@@ -122,9 +123,6 @@ d3.box = function() {
           .on('mouseout', function() {
             d3.select(this)
               .attr('fill', 'steelblue');
-          })
-          .on('click', function(d) {
-            console.log(d);
           })
         .transition()
           .duration(duration)
