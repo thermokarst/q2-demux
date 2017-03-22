@@ -22,6 +22,7 @@ from q2_demux._demux import (BarcodeSequenceFastqIterator,
 from q2_demux import emp_single, emp_paired, summarize
 from q2_types.per_sample_sequences import (
     FastqGzFormat, FastqManifestFormat, YamlFormat)
+from q2_demux._summarize._visualizer import _PlotQualView
 
 
 class BarcodeSequenceFastqIteratorTests(unittest.TestCase):
@@ -652,10 +653,12 @@ class SummarizeTests(unittest.TestCase):
 
         demux_data = emp_single(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
+        # TODO: Remove _PlotQualView wrapper
         with tempfile.TemporaryDirectory() as output_dir:
-            result = summarize(output_dir, demux_data)
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=False), n=2)
             self.assertTrue(result is None)
-            index_fp = os.path.join(output_dir, 'index.html')
+            index_fp = os.path.join(output_dir, 'overview.html')
             self.assertTrue(os.path.exists(index_fp))
             self.assertTrue(os.path.getsize(index_fp) > 0)
             csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
@@ -683,10 +686,12 @@ class SummarizeTests(unittest.TestCase):
 
         demux_data = emp_single(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
+        # TODO: Remove _PlotQualView wrapper
         with tempfile.TemporaryDirectory() as output_dir:
-            result = summarize(output_dir, demux_data)
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=False), n=1)
             self.assertTrue(result is None)
-            index_fp = os.path.join(output_dir, 'index.html')
+            index_fp = os.path.join(output_dir, 'overview.html')
             self.assertTrue(os.path.exists(index_fp))
             self.assertTrue(os.path.getsize(index_fp) > 0)
             csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
