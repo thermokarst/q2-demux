@@ -55,7 +55,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     per_sample_fastq_counts = {}
     for file in fwd:
         count = 0
-        for seq in _read_fastq_seqs(os.path.join(str(data), file)):
+        for seq in _read_fastq_seqs(file):
             count += 1
         sample_name = os.path.basename(file).split('_', 1)[0]
         per_sample_fastq_counts[sample_name] = count

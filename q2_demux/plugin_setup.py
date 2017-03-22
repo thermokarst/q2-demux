@@ -128,7 +128,9 @@ plugin.visualizers.register_function(
         'data': 'The demultiplexed sequences to be summarized.'
     },
     parameter_descriptions={
-        'n': 'The number of sequences to subsample for quality plots.'
+        'n': ('The number of sequences to subsample for the interactive '
+              'quality plot. If inputs are paired end, plots will be generated'
+              ' for both forward and reverse reads for each `n` samples')
     },
     name='Summarize counts per sample.',
     description=('Generate a summary of counts per sample from sequence data '
