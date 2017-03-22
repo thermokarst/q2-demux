@@ -44,26 +44,18 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     paired = data.paired
     data = data._directory_format
 
-    fwd = []
-    rev = []
-    with open(os.path.join(str(data), data.manifest.name)) as fh:
-        # Skip header
-        fh.readline()
-        for line in fh.readlines():
-            manifest_line = line.strip().split(',')
-            if len(manifest_line) == 3:
-                if manifest_line[2] == 'forward':
-                    fwd.append(os.path.join(str(data), manifest_line[1]))
-                elif manifest_line[2] == 'reverse':
-                    rev.append(os.path.join(str(data), manifest_line[1]))
-                else:
-                    raise ValueError('Improperly formated manifest found on '
-                                     'line %s' % line)
+    manifest = pd.read_csv(os.path.join(str(data), data.manifest.name),
+                           header=0, comment='#')
+    manifest.filename = manifest.filename.apply(
+        lambda x: os.path.join(str(data), x))
+
+    fwd = manifest[manifest.direction == 'forward'].filename.tolist()
+    rev = manifest[manifest.direction == 'reverse'].filename.tolist()
 
     per_sample_fastq_counts = {}
     for file in fwd:
         count = 0
-        for seq in _read_fastq_seqs(file):
+        for seq in _read_fastq_seqs(os.path.join(str(data), file)):
             count += 1
         sample_name = os.path.basename(file).split('_', 1)[0]
         per_sample_fastq_counts[sample_name] = count
