@@ -70,7 +70,6 @@ d3.box = function() {
       // Update center line: the vertical line spanning the whiskers.
       var center = g.selectAll("line.center")
           .data(whiskerData ? [whiskerData] : []);
-   //vertical line
 
       center.enter().append("line", "rect")
           .attr("class", "center")
@@ -276,6 +275,20 @@ d3.box = function() {
           .attr("y", x1)
           .style("opacity", 1e-6)
           .remove();
+
+      d3.select(this).on('mouseover', function(d) {
+        const svg = d3.select(this.parentNode).node();
+        const plotContainer = d3.select(svg.parentNode);
+        plotContainer.select('.stats')
+          .html(`<table class="table" style="margin-bottom: 0;"><thead><tr><th class="col-xs-9" style="font-size: 10px;">Hover over a boxplot to learn more...</th><th class="col-xs-3"></th></thead><tbody><tr><td>Base #</td><td>${d[0] + 1}</td></tr><tr><td>Minimum</td><td>${whiskerData[0]}</td></tr><tr><td>1st Quartile</td><td>${quartileData[0]}</td></tr><tr><td>Median</td><td>${quartileData[1]}</td></tr><tr><td>3rd Quartile</td><td>${quartileData[2]}</td></tr><tr><td>Maximum</td><td>${whiskerData[1]}</td></tr></tbody></table>`)
+      })
+
+      // d3.select(this).on('mouseout', function() {
+      //   const svg = d3.select(this.parentNode).node();
+      //   const plotContainer = d3.select(svg.parentNode);
+      //   plotContainer.select('.stats')
+      //     .html('Hover over a boxplot to learn more...')
+      // });
     });
     // d3.timer.flush();
   }

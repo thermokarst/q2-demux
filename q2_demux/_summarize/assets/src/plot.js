@@ -10,12 +10,28 @@ import * as d3 from 'd3';
 import box from './box';
 
 
-const plot = (data, props, container) => {
-  const svg = d3
-    .select(container)
-  .append('svg')
-    .attr('width', props.width + props.margin.left + props.margin.right)
-    .attr('height', props.height + props.margin.top + props.margin.bottom);
+const plot = (data, props, container, paired) => {
+  const plotContainer = d3.select(container);
+
+  const svg = plotContainer
+    .append('svg')
+      .attr('class', paired ? 'col-xs-12' : 'col-xs-12 col-lg-10')
+      .style('display', 'block')
+      .style('margin', '0 auto')
+      .attr('width', props.width + props.margin.left + props.margin.right)
+      .attr('height', props.height + props.margin.top + props.margin.bottom);
+
+  const panel = plotContainer
+    .append('div')
+      .attr('class', paired ? 'col-xs-12': 'col-xs-12 col-lg-2')
+    .append('div')
+      .attr('class', 'panel panel-default')
+  panel.append('div')
+    .attr('class', 'panel-heading')
+    .html('Statistical Summary')
+  panel.append('div')
+    .attr('class', 'stats')
+    .html(`<table class="table" style="margin-bottom: 0;"><thead><tr><th class="col-xs-9" style="font-size: 10px;">Hover over a boxplot to learn more...</th><th class="col-xs-3"></th></thead><tbody><tr><td>Base #</td><td>...</td></tr><tr><td>Minimum</td><td>...</td></tr><tr><td>1st Quartile</td><td>...</td></tr><tr><td>Median</td><td>...</td></tr><tr><td>3rd Quartile</td><td>...</td></tr><tr><td>Maximum</td><td>...</td></tr></tbody></table>`)
 
   const maxX = d3.max(data, d => d[0]);
   const x0 = [0, maxX];
@@ -61,6 +77,24 @@ const plot = (data, props, container) => {
     .attr('class', 'boxplot')
     .attr("transform", d => `translate(${x(d[0])}, ${props.margin.top})`)
     .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2));
+
+  svg.append('rect')
+      .attr('width', props.width + props.margin.left + props.margin.right)
+      .attr('height', props.margin.bottom * 4)
+      .attr('y', props.height - props.margin.bottom)
+      .attr('fill', 'white')
+
+  svg.append('rect')
+      .attr('width', props.margin.left * 4)
+      .attr('x', -props.margin.left * 3)
+      .attr('height', props.height + 200)
+      .attr('fill', 'white')
+
+  svg.append('rect')
+    .attr('width', props.margin.right + 1000)
+    .attr('height', props.height + 200)
+    .attr('x', props.width + 10)
+    .attr('fill', 'white')
 
   svg.append("g")
       .attr("class", "axis axis--x")
@@ -129,6 +163,8 @@ const initializePlot = (data) => {
     width: width - margin.left - margin.right,
     height: ((width * 9) / 16) - margin.top - margin.bottom };
 
+  const paired = Object.keys(data[0]).length == 2 ? true : false;
+
   for (let direction of Object.keys(data[0])) {
     const maxLen = d3.max(data, d => d[direction].length);
     const processedData = new Array(maxLen);
@@ -145,7 +181,7 @@ const initializePlot = (data) => {
       }
     }
 
-    plot(processedData, props, `#${direction}Container`);
+    plot(processedData, props, `#${direction}Container`, paired);
   }
 }
 

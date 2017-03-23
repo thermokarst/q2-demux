@@ -35,14 +35,13 @@ class _PlotQualView:
     paired-end directory format with a bool indicating if single or paired.
     """
     def __init__(self, directory_format, paired):
-        self._directory_format = directory_format
-        self.directory = str(directory_format)
+        self.directory_format = directory_format
         self.paired = paired
 
 
 def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     paired = data.paired
-    data = data._directory_format
+    data = data.directory_format
 
     manifest = pd.read_csv(os.path.join(str(data), data.manifest.name),
                            header=0, comment='#')
