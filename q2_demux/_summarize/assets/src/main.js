@@ -8,6 +8,6 @@
 
 import initializePlot from './plot';
 
-export const init = (qual_scores) => { // eslint-disable-line import/prefer-default-export
-  initializePlot(qual_scores);
+export const init = (qualScores) => { // eslint-disable-line import/prefer-default-export
+  initializePlot(qualScores);
 };
