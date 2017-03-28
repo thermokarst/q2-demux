@@ -43,7 +43,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     paired = data.paired
     data = data.directory_format
 
-    manifest = pd.read_csv(os.path.join(str(data), data.manifest.name),
+    manifest = pd.read_csv(os.path.join(str(data), data.manifest.pathspec),
                            header=0, comment='#')
     manifest.filename = manifest.filename.apply(
         lambda x: os.path.join(str(data), x))
