@@ -215,7 +215,7 @@ const initializePlot = (data) => {
       for (let i = 0; i < point[direction].length; i += 1) {
         processedData[i] = processedData[i] || new Array(2);
         if (!processedData[i][0]) {
-          processedData[i][0] = i;
+          processedData[i][0] = i + 1;
         }
         if (!processedData[i][1]) {
           processedData[i][1] = [];

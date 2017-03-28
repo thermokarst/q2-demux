@@ -58,12 +58,11 @@ export default function addBox(d3) {
 
         const center = g.selectAll('line.center')
           .data(whiskerData ? [whiskerData] : []);
-
         center.enter().append('line', 'rect')
           .attr('class', 'center')
-          .attr('x1', width / 2)
+          .attr('x1', 0)
           .attr('y1', d => x0(d[0]))
-          .attr('x2', width / 2)
+          .attr('x2', 0)
           .attr('y2', d => x0(d[1]))
           .style('opacity', 1e-6)
           .attr('stroke-dasharray', '3,3')
@@ -78,8 +77,8 @@ export default function addBox(d3) {
         center.transition()
           .duration(duration)
           .style('opacity', 1)
-          .attr('x1', width / 2)
-          .attr('x2', width / 2)
+          .attr('x1', 0)
+          .attr('x2', 0)
           .attr('y1', d => x1(d[0]))
           .attr('y2', d => x1(d[1]));
 
@@ -96,7 +95,7 @@ export default function addBox(d3) {
 
         iqBox.enter().append('rect')
           .attr('class', 'box')
-          .attr('x', 0)
+          .attr('x', -width / 2)
           .attr('y', d => x0(d[2]))
           .attr('width', width)
           .attr('height', d => x0(d[0]) - x0(d[2]))
@@ -118,6 +117,7 @@ export default function addBox(d3) {
 
         iqBox.transition()
           .duration(duration)
+          .attr('x', -width / 2)
           .attr('y', d => x1(d[2]))
           .attr('width', width)
           .attr('height', d => x1(d[0]) - x1(d[2]));
@@ -128,9 +128,9 @@ export default function addBox(d3) {
 
         medianLine.enter().append('line')
           .attr('class', 'median')
-          .attr('x1', 0)
+          .attr('x1', -width / 2)
           .attr('y1', x0)
-          .attr('x2', width)
+          .attr('x2', width / 2)
           .attr('y2', x0)
           .attr('stroke', 'black')
           .attr('stroke-width', '1px')
@@ -141,7 +141,8 @@ export default function addBox(d3) {
 
         medianLine.transition()
           .duration(duration)
-          .attr('x2', width)
+          .attr('x1', -width / 2)
+          .attr('x2', width / 2)
           .attr('y1', x1)
           .attr('y2', x1);
 
@@ -151,9 +152,9 @@ export default function addBox(d3) {
 
         whisker.enter().insert('line', 'circle, text')
           .attr('class', 'whisker')
-          .attr('x1', 0)
+          .attr('x1', -width / 2)
           .attr('y1', x0)
-          .attr('x2', 0 + width)
+          .attr('x2', width / 2)
           .attr('y2', x0)
           .style('opacity', 1e-6)
           .attr('stroke', 'black')
@@ -166,7 +167,8 @@ export default function addBox(d3) {
 
         whisker.transition()
           .duration(duration)
-          .attr('x2', 0 + width)
+          .attr('x1', -width / 2)
+          .attr('x2', width / 2)
           .attr('y1', x1)
           .attr('y2', x1)
           .style('opacity', 1);
@@ -184,7 +186,7 @@ export default function addBox(d3) {
         outlier.enter().insert('circle', 'text')
           .attr('class', 'outlier')
           .attr('r', width / 4)
-          .attr('cx', width / 2)
+          .attr('cx', 0)
           .attr('cy', i => x0(d[i]))
           .style('opacity', 1e-6)
           .attr('fill', 'none')
@@ -198,7 +200,7 @@ export default function addBox(d3) {
           .duration(duration)
           .attr('cy', i => x1(d[i]))
           .attr('r', width / 8)
-          .attr('cx', width / 2)
+          .attr('cx', 0)
           .style('opacity', 1);
 
         outlier.exit().transition()
@@ -241,7 +243,7 @@ export default function addBox(d3) {
           .select('tbody')
           .selectAll('tr')
             .data([
-              ['Position Number', d[0] + 1],
+              ['Position Number', d[0]],
               ['Minimum', whiskerData[0]],
               ['1st Quartile', quartileData[0]],
               ['Median', quartileData[1]],
@@ -252,15 +254,7 @@ export default function addBox(d3) {
             .data(d => d)
             .text(d => d);
         });
-
-      // d3.select(this).on('mouseout', function() {
-      //   const svg = d3.select(this.parentNode).node();
-      //   const plotContainer = d3.select(svg.parentNode);
-      //   plotContainer.select('.stats')
-      //     .html('Hover over a boxplot to learn more...')
-      // });
       });
-    // d3.timer.flush();
     }
 
     box.width = (x) => {
