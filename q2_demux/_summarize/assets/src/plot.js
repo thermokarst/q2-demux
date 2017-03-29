@@ -82,21 +82,19 @@ const plot = (data, props, container) => {
   const xAxis = d3.axisBottom(x).ticks(12);
   const yAxis = d3.axisLeft(y).ticks((12 * props.height) / props.width);
 
-  function iqr(k) {
-    return (d) => {
-      const q1 = d.quartiles[0];
-      const q3 = d.quartiles[2];
-      const iq = (q3 - q1) * k;
-      let i = -1;
-      let j = d.length;
-      while (d[++i] < q1 - iq);  // eslint-disable-line no-plusplus
-      while (d[--j] > q3 + iq);  // eslint-disable-line no-plusplus
-      return [i, j];
-    };
-  }
+  const iqr = (d) => {
+    const q1 = d.quartiles[0];
+    const q3 = d.quartiles[2];
+    const iq = (q3 - q1) * 1.5;
+    let i = -1;
+    let j = d.length;
+    while (d[++i] < q1 - iq);  // eslint-disable-line no-plusplus
+    while (d[--j] > q3 + iq);  // eslint-disable-line no-plusplus
+    return [i, j];
+  };
 
   const chart = d3.box()
-    .whiskers(iqr(1.5))
+    .whiskers(iqr)
     .height(props.height - props.margin.bottom - props.margin.top)
     .domain([0, 100]);
 
@@ -220,7 +218,7 @@ const initializePlot = (data) => {
         if (!processedData[i][1]) {
           processedData[i][1] = [];
         }
-        processedData[i][1].push(point.forward[i]);
+        processedData[i][1].push(point[direction][i]);
       }
     });
 
