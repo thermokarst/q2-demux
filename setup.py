@@ -36,5 +36,5 @@ setup(
         'q2_demux.tests': ['data/**/*'],
         'q2_demux': ['assets/index.html']
     },
-    zip_safe=True,
+    zip_safe=False,
 )
