@@ -12,7 +12,7 @@ import addBox from './box';
 
 const plot = (data, props, container) => {
   const plotContainer = d3.select(container);
-
+  console.log(data)
   const svg = plotContainer
     .append('svg')
       .attr('class', 'col-xs-12')
@@ -71,7 +71,7 @@ const plot = (data, props, container) => {
 
   const maxX = d3.max(data, d => d[0]);
   const x0 = [0, maxX];
-  const y0 = [0, 100];
+  const y0 = [0, 45];
   const x = d3.scaleLinear()
     .domain(x0)
     .range([props.margin.left, props.width]);
@@ -82,21 +82,9 @@ const plot = (data, props, container) => {
   const xAxis = d3.axisBottom(x).ticks(12);
   const yAxis = d3.axisLeft(y).ticks((12 * props.height) / props.width);
 
-  const iqr = (d) => {
-    const q1 = d.quartiles[0];
-    const q3 = d.quartiles[2];
-    const iq = (q3 - q1) * 1.5;
-    let i = -1;
-    let j = d.length;
-    while (d[++i] < q1 - iq);  // eslint-disable-line no-plusplus
-    while (d[--j] > q3 + iq);  // eslint-disable-line no-plusplus
-    return [i, j];
-  };
-
-  const chart = d3.box()
-    .whiskers(iqr)
+  const chart = d3.boxplot()
     .height(props.height - props.margin.bottom - props.margin.top)
-    .domain([0, 100]);
+    .domain(y0);
 
   const brush = d3.brush();
   let idleTimeout;
@@ -206,23 +194,8 @@ const initializePlot = (data) => {
     width: width - margin.left - margin.right,
     height: ((width * 9) / 16) - margin.top - margin.bottom };
 
-  Object.keys(data[0]).forEach((direction) => {
-    const maxLen = d3.max(data, d => d[direction].length);
-    const processedData = new Array(maxLen);
-    data.forEach((point) => {
-      for (let i = 0; i < point[direction].length; i += 1) {
-        processedData[i] = processedData[i] || new Array(2);
-        if (!processedData[i][0]) {
-          processedData[i][0] = i + 1;
-        }
-        if (!processedData[i][1]) {
-          processedData[i][1] = [];
-        }
-        processedData[i][1].push(point[direction][i]);
-      }
-    });
-
-    plot(processedData, props, `#${direction}Container`);
+  Object.keys(data).forEach((direction) => {
+    plot(data[direction], props, `#${direction}Container`);
   });
 };
 

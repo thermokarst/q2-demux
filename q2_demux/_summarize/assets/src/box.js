@@ -4,50 +4,24 @@
 
 export default function addBox(d3) {
   /* eslint-disable no-shadow */
-  // Inspired by http://informationandvisualization.de/blog/box-plot
-  function boxWhiskers(d) {
-    return [0, d.length - 1];
-  }
 
-  function boxQuartiles(d) {
-    return [
-      d3.quantile(d, 0.25),
-      d3.quantile(d, 0.5),
-      d3.quantile(d, 0.75),
-    ];
-  }
-
-  d3.box = () => {  // eslint-disable-line no-param-reassign
+  d3.boxplot = () => {  // eslint-disable-line no-param-reassign
     let width = 1;
     let height = 1;
     let duration = 750;
     let domain = null;
-    let value = Number;
-    let whiskers = boxWhiskers;
-    let quartiles = boxQuartiles;
-    let tickFormat = null;
 
     function box(gs) {
       gs.each(function draw(data, i) {
-        const d = data[1].sort(d3.ascending);
-
+        const d = data[1]
         const g = d3.select(this);
-        const n = d.length;
-        const min = d[0];
-        const max = d[n - 1];
 
-        d.quartiles = quartiles(d);
-        const quartileData = d.quartiles;
 
-        const whiskerIndices = whiskers && whiskers.call(this, d, i);
-        const whiskerData = whiskerIndices && whiskerIndices.map(wi => d[wi]);
-
-        const outlierIndices = whiskerIndices
-          ? d3.range(0, whiskerIndices[0]).concat(d3.range(whiskerIndices[1] + 1, n))
-          : d3.range(n);
-
+        const quartiles = [d['25%'], d['50%'], d['75%']];
+        const whiskers = [d['min'], d['max']];
+        console.log(quartiles, whiskers)
         const x1 = d3.scaleLinear()
-          .domain((domain && domain.call(this, d, i)) || [min, max])
+          .domain((domain && domain.call(this, d, i)))
           .range([height, 0]);
 
         const x0 = this.existingChart || d3.scaleLinear()
@@ -57,7 +31,7 @@ export default function addBox(d3) {
         this.existingChart = x1;
 
         const center = g.selectAll('line.center')
-          .data(whiskerData ? [whiskerData] : []);
+          .data([whiskers]);
         center.enter().append('line', 'rect')
           .attr('class', 'center')
           .attr('x1', 0)
@@ -91,7 +65,7 @@ export default function addBox(d3) {
 
       // Update innerquartile box.
         const iqBox = g.selectAll('rect.box')
-          .data([quartileData]);
+          .data([quartiles]);
 
         iqBox.enter().append('rect')
           .attr('class', 'box')
@@ -124,7 +98,7 @@ export default function addBox(d3) {
 
       // Update median line.
         const medianLine = g.selectAll('line.median')
-          .data([quartileData[1]]);
+          .data([quartiles[1]]);
 
         medianLine.enter().append('line')
           .attr('class', 'median')
@@ -148,7 +122,7 @@ export default function addBox(d3) {
 
       // Update whiskers.
         const whisker = g.selectAll('line.whisker')
-          .data(whiskerData || []);
+          .data(whiskers);
 
         whisker.enter().insert('line', 'circle, text')
           .attr('class', 'whisker')
@@ -180,60 +154,6 @@ export default function addBox(d3) {
           .style('opacity', 1e-6)
           .remove();
 
-        const outlier = g.selectAll('circle.outlier')
-          .data(outlierIndices, Number);
-
-        outlier.enter().insert('circle', 'text')
-          .attr('class', 'outlier')
-          .attr('r', width / 4)
-          .attr('cx', 0)
-          .attr('cy', i => x0(d[i]))
-          .style('opacity', 1e-6)
-          .attr('fill', 'none')
-          .attr('stroke', 'black')
-        .transition()
-          .duration(duration)
-          .attr('cy', i => x1(d[i]))
-          .style('opacity', 1);
-
-        outlier.transition()
-          .duration(duration)
-          .attr('cy', i => x1(d[i]))
-          .attr('r', width / 8)
-          .attr('cx', 0)
-          .style('opacity', 1);
-
-        outlier.exit().transition()
-          .duration(duration)
-          .attr('cy', i => x1(d[i]))
-          .style('opacity', 1e-6)
-          .remove();
-
-
-        const format = tickFormat || x1.tickFormat(8);
-
-        const boxTick = g.selectAll('text.box')
-          .data(quartileData);
-
-        boxTick.transition()
-          .duration(duration)
-          .text(format)
-          .attr('y', x1);
-
-        const whiskerTick = g.selectAll('text.whisker')
-          .data(whiskerData || []);
-
-        whiskerTick.transition()
-          .duration(duration)
-          .text(format)
-          .attr('y', x1)
-          .style('opacity', 1);
-
-        whiskerTick.exit().transition()
-          .duration(duration)
-          .attr('y', x1)
-          .style('opacity', 1e-6)
-          .remove();
 
         d3.select(this).on('mouseover', function mouseover(d) {
           const svg = d3.select(this.parentNode).node();
@@ -243,12 +163,12 @@ export default function addBox(d3) {
           .select('tbody')
           .selectAll('tr')
             .data([
-              ['Position Number', d[0]],
-              ['Minimum', whiskerData[0]],
-              ['1st Quartile', quartileData[0]],
-              ['Median', quartileData[1]],
-              ['3rd Quartile', quartileData[2]],
-              ['Maximum', whiskerData[1]],
+              ['Position Number', data[0]],
+              ['Minimum', whiskers[0]],
+              ['1st Quartile', quartiles[0]],
+              ['Median', quartiles[1]],
+              ['3rd Quartile', quartiles[2]],
+              ['Maximum', whiskers[1]],
             ])
           .selectAll('td')
             .data(d => d)
@@ -269,41 +189,11 @@ export default function addBox(d3) {
       return box;
     };
 
-    box.tickFormat = (x) => {
-      if (!arguments.length) return tickFormat;
-      tickFormat = x;
-      return box;
-    };
-
-    box.duration = (x) => {
-      if (!arguments.length) return duration;
-      duration = x;
-      return box;
-    };
-
     const functor = x => () => x;
 
     box.domain = (x) => {
       if (!arguments.length) return domain;
       domain = x == null ? x : functor(x);
-      return box;
-    };
-
-    box.value = (x) => {
-      if (!arguments.length) return value;
-      value = x;
-      return box;
-    };
-
-    box.whiskers = (x) => {
-      if (!arguments.length) return whiskers;
-      whiskers = x;
-      return box;
-    };
-
-    box.quartiles = (x) => {
-      if (!arguments.length) return quartiles;
-      quartiles = x;
       return box;
     };
 

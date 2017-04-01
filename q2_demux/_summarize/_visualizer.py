@@ -11,6 +11,9 @@ import os
 import pkg_resources
 import shutil
 import random
+import linecache
+import gzip
+import tempfile
 
 import pandas as pd
 import seaborn as sns
@@ -22,7 +25,7 @@ import q2templates
 TEMPLATES = pkg_resources.resource_filename('q2_demux', '_summarize')
 
 
-def _decode_qual_to_phred(qual_str):
+def _decode_qual_to_phred33(qual_str):
     # this function is adapted from scikit-bio
     qual = np.fromstring(qual_str, dtype=np.uint8) - 33
     return qual
@@ -39,7 +42,82 @@ class _PlotQualView:
         self.paired = paired
 
 
-def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
+def _link_sample_n_to_file(files, counts, subsample_ns):
+    results = collections.defaultdict(list)
+    for num in subsample_ns:
+        total = 0
+        for file in files:
+            sample_name = os.path.basename(file).split('_', 1)[0]
+            total += counts[sample_name]
+            if num <= total:
+                idx = counts[sample_name] - (total - num)
+                results[file].append(idx)
+                break
+    return results
+
+
+# def _subsample_paired(fastq_map):
+#     qual_sample = collections.defaultdict(list)
+#     for fwd, rev, index in fastq_map:
+#         file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
+#         for i, (fseq, rseq) in enumerate(file_pair):
+#             if i == index[0]:
+#                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
+#                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
+#                 index.pop(0)
+#                 if len(index) == 0:
+#                     break
+#
+#     return qual_sample
+
+
+# def _subsample_single(fastq_map):
+#     qual_sample = collections.defaultdict(list)
+#     for file, index in fastq_map:
+#         for i, seq in enumerate(_read_fastq_seqs(file)):
+#             if i == index[0]:
+#                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
+#                 index.pop(0)
+#                 if len(index) == 0:
+#                     break
+#     return qual_sample
+
+def _subsample_paired(fastq_map):
+    qual_sample = collections.defaultdict(list)
+    for fwd, rev, index in fastq_map:
+        with tempfile.NamedTemporaryFile() as ffh, \
+             tempfile.NamedTemporaryFile() as rfh:
+            shutil.copyfileobj(gzip.open(fwd), ffh)
+            shutil.copyfileobj(gzip.open(rev), rfh)
+            for idx in index:
+                fseq = linecache.getline(ffh.name, idx * 4)
+                rseq = linecache.getline(rfh.name, idx * 4)
+                qual_sample['forward'].append(_decode_qual_to_phred33(fseq))
+                qual_sample['reverse'].append(_decode_qual_to_phred33(rseq))
+    return qual_sample
+
+
+def _subsample_single(fastq_map):
+    qual_sample = collections.defaultdict(list)
+    for file, index in fastq_map:
+        with tempfile.NamedTemporaryFile() as fh:
+            shutil.copyfileobj(gzip.open(file), fh)
+            for idx in index:
+                qscore = linecache.getline(fh.name, idx * 4)
+                qual_sample['forward'].append(_decode_qual_to_phred33(qscore))
+    return qual_sample
+
+
+def _compute_stats_of_df(df):
+    df_95p = df.quantile([0.05, 0.95])
+    df = df.apply(lambda x: x[(x > df_95p.loc[0.05, x.name]) &
+                              (x < df_95p.loc[0.95, x.name])])
+    df_stats = df.describe()
+    df_stats = df_stats[~df_stats.index.isin(['count', 'std', 'mean'])]
+    return df_stats
+
+
+def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     paired = data.paired
     data = data.directory_format
 
@@ -52,7 +130,8 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     rev = manifest[manifest.direction == 'reverse'].filename.tolist()
 
     per_sample_fastq_counts = {}
-    for file in fwd:
+    reads = rev if not fwd and rev else fwd
+    for file in reads:
         count = 0
         for seq in _read_fastq_seqs(file):
             count += 1
@@ -66,41 +145,22 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
 
-    quality_scores = collections.defaultdict(list)
     subsample_ns = sorted(random.sample(range(1, result.sum() + 1), n))
-    target = subsample_ns.pop(0)
-    current = 1
+    link = _link_sample_n_to_file(reads, per_sample_fastq_counts, subsample_ns)
     if paired:
-        for f, r in zip(sorted(fwd), sorted(rev)):
-            for seq1, seq2 in zip(_read_fastq_seqs(f), _read_fastq_seqs(r)):
-                if current == target:
-                    quality_scores['forward'].append(
-                        _decode_qual_to_phred(seq1[3]))
-                    quality_scores['reverse'].append(
-                        _decode_qual_to_phred(seq2[3]))
-                    if subsample_ns:
-                        target = subsample_ns.pop(0)
-                    else:
-                        target = -1
-                        break
-                current += 1
-            if target == -1:
-                break
+        sample_map = [(file, rev[fwd.index(file)], link[file])
+                      for file in link]
+        quality_scores = _subsample_paired(sample_map)
     else:
-        for f in fwd:
-            for seq in _read_fastq_seqs(f):
-                if current == target:
-                    quality_scores['forward'].append(
-                        _decode_qual_to_phred(seq[3]))
-                    if subsample_ns:
-                        target = subsample_ns.pop(0)
-                    else:
-                        target = -1
-                        break
-                current += 1
-            if target == -1:
-                break
-    subsample_seqs = pd.DataFrame.from_dict(quality_scores)
+        sample_map = [(file, link[file]) for file in link]
+        quality_scores = _subsample_single(sample_map)
+
+    forward_scores = pd.DataFrame(quality_scores['forward'])
+    forward_stats = _compute_stats_of_df(forward_scores)
+
+    if paired:
+        reverse_scores = pd.DataFrame(quality_scores['reverse'])
+        reverse_stats = _compute_stats_of_df(reverse_scores)
 
     show_plot = len(fwd) > 1
     if show_plot:
@@ -140,5 +200,8 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10) -> None:
 
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
-        subsample_seqs.to_json(fh, orient="records")
+        forward_stats.to_json(fh)
+        if paired:
+            fh.write(',')
+            reverse_stats.to_json(fh)
         fh.write(');')
