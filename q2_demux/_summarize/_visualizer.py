@@ -85,13 +85,13 @@ def _link_sample_n_to_file(files, counts, subsample_ns):
 def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
     for fwd, rev, index in fastq_map:
-        with tempfile.NamedTemporaryFile() as ffh, \
-             tempfile.NamedTemporaryFile() as rfh:
+        with tempfile.NamedTemporaryFile(buffering=0) as ffh, \
+             tempfile.NamedTemporaryFile(buffering=0) as rfh:
             shutil.copyfileobj(gzip.open(fwd), ffh)
             shutil.copyfileobj(gzip.open(rev), rfh)
             for idx in index:
-                fseq = linecache.getline(ffh.name, idx * 4)
-                rseq = linecache.getline(rfh.name, idx * 4)
+                fseq = linecache.getline(ffh.name, idx * 4).strip()
+                rseq = linecache.getline(rfh.name, idx * 4).strip()
                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq))
                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq))
     return qual_sample
@@ -100,10 +100,10 @@ def _subsample_paired(fastq_map):
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
     for file, index in fastq_map:
-        with tempfile.NamedTemporaryFile() as fh:
+        with tempfile.NamedTemporaryFile(buffering=0) as fh:
             shutil.copyfileobj(gzip.open(file), fh)
             for idx in index:
-                qscore = linecache.getline(fh.name, idx * 4)
+                qscore = linecache.getline(fh.name, idx * 4).strip()
                 qual_sample['forward'].append(_decode_qual_to_phred33(qscore))
     return qual_sample
 
