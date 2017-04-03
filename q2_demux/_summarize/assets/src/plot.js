@@ -7,12 +7,13 @@
 // ----------------------------------------------------------------------------
 
 import * as d3 from 'd3';
-import addBox from './box';
 
+import addBoxplotsToD3 from './box';
+import addBrush from './brush';
 
 const plot = (data, props, container) => {
   const plotContainer = d3.select(container);
-  console.log(data)
+
   const svg = plotContainer
     .append('svg')
       .attr('class', 'col-xs-12')
@@ -80,53 +81,16 @@ const plot = (data, props, container) => {
     .range([props.height - props.margin.bottom, props.margin.top]);
 
   const xAxis = d3.axisBottom(x).ticks(12);
-  const yAxis = d3.axisLeft(y).ticks((12 * props.height) / props.width);
+  const yAxis = d3.axisLeft(y).ticks(9);
 
   const chart = d3.boxplot()
     .height(props.height - props.margin.bottom - props.margin.top)
     .domain(y0);
 
-  const brush = d3.brush();
-  let idleTimeout;
-  const idleDelay = 350;
+  addBrush(svg, chart, props, x, y, x0, y0, xAxis, yAxis);
 
-  const idled = () => {
-    idleTimeout = null;
-  };
-
-  const zoom = () => {
-    const t = svg.transition().duration(750);
-    svg.select('.axis--x').transition(t).call(xAxis);
-    svg.select('.axis--y').transition(t).call(yAxis);
-    svg.selectAll('.boxplot').transition(t)
-      .call(chart.domain(y.domain())
-                 .width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2))
-      .attr('transform', d => `translate(${x(d[0])}, ${props.margin.top})`);
-  };
-
-  const brushEnded = () => {
-    const s = d3.event.selection;
-    if (!s) {
-      if (!idleTimeout) {
-        idleTimeout = setTimeout(idled, idleDelay);
-        return idleTimeout;
-      }
-      x.domain(x0);
-      y.domain(y0);
-    } else {
-      x.domain([s[0][0], s[1][0]].map(x.invert, x));
-      y.domain([s[1][1], s[0][1]].map(y.invert, y));
-      svg.select('.brush').call(brush.move, null);
-    }
-    return zoom();
-  };
-
-  brush.on('end', brushEnded);
-
-  svg.append('g')
-      .attr('class', 'brush')
-      .attr('z-index', -1)
-      .call(brush);
+  chart
+    .width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2);
 
   svg.selectAll('.box')
     .attr('font', '10px sans-serif')
@@ -135,7 +99,7 @@ const plot = (data, props, container) => {
     .append('g')
     .attr('class', 'boxplot')
     .attr('transform', d => `translate(${x(d[0])}, ${props.margin.top})`)
-    .call(chart.width((x.range()[1] - x.range()[0]) / (x.domain()[1] - x.domain()[0]) / 2));
+    .call(chart);
 
   svg.append('rect')
       .attr('width', props.width + props.margin.left + props.margin.right)
@@ -186,7 +150,7 @@ const plot = (data, props, container) => {
 };
 
 const initializePlot = (data) => {
-  addBox(d3);
+  addBoxplotsToD3(d3);
   const margin = { top: 10, right: 30, bottom: 30, left: 30 };
   const width = d3.select('#forwardContainer').node().offsetWidth;
   const props = {

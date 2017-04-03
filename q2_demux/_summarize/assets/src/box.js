@@ -1,25 +1,19 @@
-// Heavily modified variant of http://bl.ocks.org/jensgrubert/7789216
-// which is based off of https://gist.github.com/mbostock/4061502
-// which is written and marked as being under GPL-3
-
-export default function addBox(d3) {
+export default function addBoxplotsToD3(d3) {
   /* eslint-disable no-shadow */
-
   d3.boxplot = () => {  // eslint-disable-line no-param-reassign
     let width = 1;
     let height = 1;
-    let duration = 750;
+    const duration = 750;
     let domain = null;
 
     function box(gs) {
       gs.each(function draw(data, i) {
-        const d = data[1]
+        const d = data[1];
         const g = d3.select(this);
 
-
         const quartiles = [d['25%'], d['50%'], d['75%']];
-        const whiskers = [d['min'], d['max']];
-        console.log(quartiles, whiskers)
+        const whiskers = [d.min, d.max];
+
         const x1 = d3.scaleLinear()
           .domain((domain && domain.call(this, d, i)))
           .range([height, 0]);
@@ -63,7 +57,6 @@ export default function addBox(d3) {
           .attr('y2', d => x1(d[1]))
           .remove();
 
-      // Update innerquartile box.
         const iqBox = g.selectAll('rect.box')
           .data([quartiles]);
 
@@ -96,7 +89,6 @@ export default function addBox(d3) {
           .attr('width', width)
           .attr('height', d => x1(d[0]) - x1(d[2]));
 
-      // Update median line.
         const medianLine = g.selectAll('line.median')
           .data([quartiles[1]]);
 
@@ -120,7 +112,6 @@ export default function addBox(d3) {
           .attr('y1', x1)
           .attr('y2', x1);
 
-      // Update whiskers.
         const whisker = g.selectAll('line.whisker')
           .data(whiskers);
 
@@ -154,8 +145,7 @@ export default function addBox(d3) {
           .style('opacity', 1e-6)
           .remove();
 
-
-        d3.select(this).on('mouseover', function mouseover(d) {
+        d3.select(this).on('mouseover', function mouseover() {
           const svg = d3.select(this.parentNode).node();
           const plotContainer = d3.select(svg.parentNode);
           plotContainer
