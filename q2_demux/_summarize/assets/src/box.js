@@ -7,15 +7,15 @@ export default function addBoxplotsToD3(d3) {
     let domain = null;
 
     function box(gs) {
-      gs.each(function draw(data, i) {
-        const d = data[1];
+      gs.each(function draw(data) {
+        const stats = data[1];
         const g = d3.select(this);
 
-        const quartiles = [d['25%'], d['50%'], d['75%']];
-        const whiskers = [d.min, d.max];
+        const quartiles = [stats['25%'], stats['50%'], stats['75%']];
+        const whiskers = [stats.min, stats.max];
 
         const x1 = d3.scaleLinear()
-          .domain((domain && domain.call(this, d, i)))
+          .domain(domain.call(this))
           .range([height, 0]);
 
         const x0 = this.existingChart || d3.scaleLinear()
@@ -24,9 +24,9 @@ export default function addBoxplotsToD3(d3) {
 
         this.existingChart = x1;
 
-        const center = g.selectAll('line.center')
+        const whiskerLine = g.selectAll('line.center')
           .data([whiskers]);
-        center.enter().append('line', 'rect')
+        whiskerLine.enter().append('line', 'rect')
           .attr('class', 'center')
           .attr('x1', 0)
           .attr('y1', d => x0(d[0]))
@@ -42,20 +42,13 @@ export default function addBoxplotsToD3(d3) {
           .attr('y1', d => x1(d[0]))
           .attr('y2', d => x1(d[1]));
 
-        center.transition()
+        whiskerLine.transition()
           .duration(duration)
           .style('opacity', 1)
           .attr('x1', 0)
           .attr('x2', 0)
           .attr('y1', d => x1(d[0]))
           .attr('y2', d => x1(d[1]));
-
-        center.exit().transition()
-          .duration(duration)
-          .style('opacity', 1e-6)
-          .attr('y1', d => x1(d[0]))
-          .attr('y2', d => x1(d[1]))
-          .remove();
 
         const iqBox = g.selectAll('rect.box')
           .data([quartiles]);
@@ -137,13 +130,6 @@ export default function addBoxplotsToD3(d3) {
           .attr('y1', x1)
           .attr('y2', x1)
           .style('opacity', 1);
-
-        whisker.exit().transition()
-          .duration(duration)
-          .attr('y1', x1)
-          .attr('y2', x1)
-          .style('opacity', 1e-6)
-          .remove();
 
         d3.select(this).on('mouseover', function mouseover() {
           const svg = d3.select(this.parentNode).node();
