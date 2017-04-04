@@ -636,17 +636,19 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
 
 class SummarizeTests(unittest.TestCase):
 
-    def test_basic(self):
-        barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
-                    ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
-                    ('@s3/2 abc/2', 'AAAA', '+', 'PPPP'),
-                    ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
+    def setUp(self):
+        self.barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
+                         ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
+                         ('@s3/2 abc/2', 'AAAA', '+', 'PPPP'),
+                         ('@s4/2 abc/2', 'AACC', '+', 'PPPP')]
 
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
-                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
-                     ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
-                     ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
-        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
+        self.sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                          ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                          ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                          ('@s4/1 abc/1', 'TTT', '+', 'PPP')]
+
+    def test_basic(self):
+        bsi = BarcodeSequenceFastqIterator(self.barcodes, self.sequences)
 
         barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
         barcode_map = qiime2.MetadataCategory(barcode_map)
@@ -676,10 +678,8 @@ class SummarizeTests(unittest.TestCase):
                 self.assertIn('<td>Maximum:</td><td>3</td>', html)
 
     def test_single_sample(self):
-        barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY')]
-
-        sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY')]
-        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
+        bsi = BarcodeSequenceFastqIterator(self.barcodes[:1],
+                                           self.sequences[:1])
 
         barcode_map = pd.Series(['AAAA'], index=['sample1'])
         barcode_map = qiime2.MetadataCategory(barcode_map)
@@ -705,3 +705,72 @@ class SummarizeTests(unittest.TestCase):
                 html = fh.read()
                 self.assertIn('<td>Minimum:</td><td>1</td>', html)
                 self.assertIn('<td>Maximum:</td><td>1</td>', html)
+
+    def test_paired_end(self):
+        barcodes = self.barcodes[:3]
+
+        forward = self.sequences[:3]
+
+        reverse = [('@s1/1 abc/1', 'CCC', '+', 'YYY'),
+                   ('@s2/1 abc/1', 'GGG', '+', 'PPP'),
+                   ('@s3/1 abc/1', 'TTT', '+', 'PPP')]
+
+        bpsi = BarcodePairedSequenceFastqIterator(barcodes, forward, reverse)
+
+        barcode_map = pd.Series(['AAAA', 'AACC', 'TTAA'],
+                                index=['sample1', 'sample2', 'sample3'])
+        barcode_map = qiime2.MetadataCategory(barcode_map)
+
+        demux_data = emp_paired(bpsi, barcode_map)
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=True), n=2)
+            self.assertTrue(result is None)
+            plot_fp = os.path.join(output_dir, 'quality-plot.html')
+            with open(plot_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<h5 class="text-center">Forward Reads</h5>',
+                              html)
+                self.assertIn('<h5 class="text-center">Reverse Reads</h5>',
+                              html)
+
+    def test_subsample_higher_than_seqs_count(self):
+        barcodes = self.barcodes[:1]
+
+        sequences = self.sequences[:1]
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
+
+        barcode_map = pd.Series(['AAAA'], index=['sample1'])
+        barcode_map = qiime2.MetadataCategory(barcode_map)
+
+        demux_data = emp_single(bsi, barcode_map)
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=False), n=50)
+            self.assertTrue(result is None)
+            plot_fp = os.path.join(output_dir, 'quality-plot.html')
+            with open(plot_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<strong>Note:</strong>', html)
+
+    def test_phred_score_out_of_range(self):
+        barcodes = self.barcodes[:3]
+
+        sequences = [('@s1/1 abc/1', 'GGG', '+', 'jjj'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'iii'),
+                     ('@s3/1 abc/1', 'AAA', '+', 'hhh')]
+        bsi = BarcodeSequenceFastqIterator(barcodes, sequences)
+
+        barcode_map = pd.Series(['AAAA', 'AACC', 'TTAA'],
+                                index=['sample1', 'sample2', 'sample3'])
+        barcode_map = qiime2.MetadataCategory(barcode_map)
+
+        demux_data = emp_single(bsi, barcode_map)
+        with tempfile.TemporaryDirectory() as output_dir:
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=False), n=50)
+            self.assertTrue(result is None)
+            plot_fp = os.path.join(output_dir, 'quality-plot.html')
+            with open(plot_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<strong>Warning:</strong>', html)

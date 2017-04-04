@@ -31,6 +31,24 @@
 {% endblock %}
 
 {% block content %}
+{% if warnings %}
+  <div class="row">
+  {% for warning in warnings %}
+    <div class="alert alert-warning">
+      <strong>Warning:</strong> {{ warning }}
+    </div>
+  {% endfor %}
+  </div>
+{% endif %}
+{% if notes %}
+  <div class="row">
+  {% for note in notes %}
+    <div class="alert alert-info">
+      <strong>Note:</strong> {{ note }}
+    </div>
+  {% endfor %}
+  </div>
+{% endif %}
 <div class="row">
   {% if paired %}
   <div id="forwardContainer" class="col-xs-12 col-md-6">
