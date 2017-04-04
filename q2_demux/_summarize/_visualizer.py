@@ -144,8 +144,11 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     result.sort_values(inplace=True, ascending=False)
     result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
                   header=True, index=True)
+    sequence_count = result.sum()
 
-    subsample_ns = sorted(random.sample(range(1, result.sum() + 1), n))
+    if n > sequence_count:
+        n = sequence_count
+    subsample_ns = sorted(random.sample(range(1, sequence_count + 1), n))
     link = _link_sample_n_to_file(reads, per_sample_fastq_counts, subsample_ns)
     if paired:
         sample_map = [(file, rev[fwd.index(file)], link[file])
@@ -182,7 +185,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
             'median': result.median(),
             'mean': result.mean(),
             'max': result.max(),
-            'sum': result.sum()
+            'sum': sequence_count
         },
         'result': html,
         'show_plot': show_plot,
