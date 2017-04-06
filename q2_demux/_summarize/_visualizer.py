@@ -57,7 +57,7 @@ def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
     for fwd, rev, index in fastq_map:
         file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
-        for i, (fseq, rseq) in enumerate(file_pair):
+        for i, (fseq, rseq) in enumerate(file_pair, 1):
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
@@ -71,7 +71,7 @@ def _subsample_paired(fastq_map):
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
     for file, index in fastq_map:
-        for i, seq in enumerate(_read_fastq_seqs(file)):
+        for i, seq in enumerate(_read_fastq_seqs(file), 1):
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
                 index.pop(0)
