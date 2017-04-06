@@ -46,7 +46,7 @@ def _link_sample_n_to_file(files, counts, subsample_ns):
         for file in files:
             sample_name = os.path.basename(file).split('_', 1)[0]
             total += counts[sample_name]
-            if num <= total:
+            if num < total:
                 idx = counts[sample_name] - (total - num)
                 results[file].append(idx)
                 break
@@ -57,7 +57,7 @@ def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
     for fwd, rev, index in fastq_map:
         file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
-        for i, (fseq, rseq) in enumerate(file_pair, 1):
+        for i, (fseq, rseq) in enumerate(file_pair):
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
@@ -71,7 +71,7 @@ def _subsample_paired(fastq_map):
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
     for file, index in fastq_map:
-        for i, seq in enumerate(_read_fastq_seqs(file), 1):
+        for i, seq in enumerate(_read_fastq_seqs(file)):
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
                 index.pop(0)
@@ -126,7 +126,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
                         'the amount of sequences across all samples. The plot '
                         'was generated using all available sequences.')
 
-    subsample_ns = sorted(random.sample(range(1, sequence_count + 1), n))
+    subsample_ns = sorted(random.sample(range(sequence_count), n))
     link = _link_sample_n_to_file(reads, per_sample_fastq_counts, subsample_ns)
     if paired:
         sample_map = [(file, rev[fwd.index(file)], link[file])
