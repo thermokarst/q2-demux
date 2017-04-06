@@ -11,9 +11,6 @@ import os
 import pkg_resources
 import shutil
 import random
-import linecache
-import gzip
-import tempfile
 
 import pandas as pd
 import seaborn as sns
@@ -56,55 +53,30 @@ def _link_sample_n_to_file(files, counts, subsample_ns):
     return results
 
 
-# def _subsample_paired(fastq_map):
-#     qual_sample = collections.defaultdict(list)
-#     for fwd, rev, index in fastq_map:
-#         file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
-#         for i, (fseq, rseq) in enumerate(file_pair):
-#             if i == index[0]:
-#                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
-#                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
-#                 index.pop(0)
-#                 if len(index) == 0:
-#                     break
-#
-#     return qual_sample
-
-
-# def _subsample_single(fastq_map):
-#     qual_sample = collections.defaultdict(list)
-#     for file, index in fastq_map:
-#         for i, seq in enumerate(_read_fastq_seqs(file)):
-#             if i == index[0]:
-#                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
-#                 index.pop(0)
-#                 if len(index) == 0:
-#                     break
-#     return qual_sample
-
 def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
     for fwd, rev, index in fastq_map:
-        with tempfile.NamedTemporaryFile(buffering=0) as ffh, \
-             tempfile.NamedTemporaryFile(buffering=0) as rfh:
-            shutil.copyfileobj(gzip.open(fwd), ffh)
-            shutil.copyfileobj(gzip.open(rev), rfh)
-            for idx in index:
-                fseq = linecache.getline(ffh.name, idx * 4).strip()
-                rseq = linecache.getline(rfh.name, idx * 4).strip()
-                qual_sample['forward'].append(_decode_qual_to_phred33(fseq))
-                qual_sample['reverse'].append(_decode_qual_to_phred33(rseq))
+        file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
+        for i, (fseq, rseq) in enumerate(file_pair):
+            if i == index[0]:
+                qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
+                qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
+                index.pop(0)
+                if len(index) == 0:
+                    break
+
     return qual_sample
 
 
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
     for file, index in fastq_map:
-        with tempfile.NamedTemporaryFile(buffering=0) as fh:
-            shutil.copyfileobj(gzip.open(file), fh)
-            for idx in index:
-                qscore = linecache.getline(fh.name, idx * 4).strip()
-                qual_sample['forward'].append(_decode_qual_to_phred33(qscore))
+        for i, seq in enumerate(_read_fastq_seqs(file)):
+            if i == index[0]:
+                qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
+                index.pop(0)
+                if len(index) == 0:
+                    break
     return qual_sample
 
 
@@ -120,8 +92,8 @@ def _compute_stats_of_df(df):
 def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     paired = data.paired
     data = data.directory_format
+    dangers = []
     warnings = []
-    notes = []
 
     manifest = pd.read_csv(os.path.join(str(data), data.manifest.pathspec),
                            header=0, comment='#')
@@ -150,9 +122,9 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
 
     if n > sequence_count:
         n = sequence_count
-        notes.append('A subsample value was provided that is greater than '
-                     'the amount of sequences across all samples. The plot '
-                     'was generated using all available sequences.')
+        warnings.append('A subsample value was provided that is greater than '
+                        'the amount of sequences across all samples. The plot '
+                        'was generated using all available sequences.')
 
     subsample_ns = sorted(random.sample(range(1, sequence_count + 1), n))
     link = _link_sample_n_to_file(reads, per_sample_fastq_counts, subsample_ns)
@@ -168,11 +140,11 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     forward_stats = _compute_stats_of_df(forward_scores)
 
     if (forward_stats.loc['50%'] > 45).any():
-        warnings.append('Some of the PHRED quality values are out of range. '
-                        'This is likely because an incorrect PHRED offset '
-                        'was chosen on import of your raw data. You can learn '
-                        'how to choose your PHRED offset during import in the '
-                        'importing tutorial.')
+        dangers.append('Some of the PHRED quality values are out of range. '
+                       'This is likely because an incorrect PHRED offset '
+                       'was chosen on import of your raw data. You can learn '
+                       'how to choose your PHRED offset during import in the '
+                       'importing tutorial.')
     if paired:
         reverse_scores = pd.DataFrame(quality_scores['reverse'])
         reverse_stats = _compute_stats_of_df(reverse_scores)
@@ -206,8 +178,9 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
                   'url': 'overview.html'},
                  {'title': 'Interactive Quality Plot',
                   'url': 'quality-plot.html'}],
+        'dangers': dangers,
         'warnings': warnings,
-        'notes': notes
+        'sample_n': n
     }
     templates = [index, overview_template, quality_template]
     q2templates.render(templates, output_dir, context=context)

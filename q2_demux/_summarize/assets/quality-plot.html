@@ -31,20 +31,20 @@
 {% endblock %}
 
 {% block content %}
+{% if dangers %}
+  <div class="row">
+  {% for danger in dangers %}
+    <div class="alert alert-danger">
+      <strong>Danger:</strong> {{ danger }}
+    </div>
+  {% endfor %}
+  </div>
+{% endif %}
 {% if warnings %}
   <div class="row">
   {% for warning in warnings %}
     <div class="alert alert-warning">
       <strong>Warning:</strong> {{ warning }}
-    </div>
-  {% endfor %}
-  </div>
-{% endif %}
-{% if notes %}
-  <div class="row">
-  {% for note in notes %}
-    <div class="alert alert-info">
-      <strong>Note:</strong> {{ note }}
     </div>
   {% endfor %}
   </div>
@@ -65,6 +65,11 @@
   {% else %}
   <div id="forwardContainer" class="col-xs-12 col-md-6 col-md-offset-3"></div>
   {% endif %}
+  <div class="col-xs-12 text-center">
+    <p><small>
+      These plots were generated using {{ "{:,}".format(sample_n) }} sequences.
+    </small></p>
+  </div>
 </div>
 <script src="./app/bundle.js" charset="utf-8"></script>
 <script src="./data.jsonp" charset="utf-8"></script>

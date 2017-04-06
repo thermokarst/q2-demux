@@ -751,7 +751,7 @@ class SummarizeTests(unittest.TestCase):
             plot_fp = os.path.join(output_dir, 'quality-plot.html')
             with open(plot_fp, 'r') as fh:
                 html = fh.read()
-                self.assertIn('<strong>Note:</strong>', html)
+                self.assertIn('<strong>Warning:</strong>', html)
 
     def test_phred_score_out_of_range(self):
         barcodes = self.barcodes[:3]
@@ -773,4 +773,4 @@ class SummarizeTests(unittest.TestCase):
             plot_fp = os.path.join(output_dir, 'quality-plot.html')
             with open(plot_fp, 'r') as fh:
                 html = fh.read()
-                self.assertIn('<strong>Warning:</strong>', html)
+                self.assertIn('<strong>Danger:</strong>', html)
