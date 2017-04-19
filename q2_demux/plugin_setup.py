@@ -123,14 +123,22 @@ plugin.visualizers.register_function(
     function=q2_demux.summarize,
     inputs={'data':
             SampleData[SequencesWithQuality | PairedEndSequencesWithQuality]},
-    parameters={},
+    parameters={'n': qiime2.plugin.Int},
     input_descriptions={
         'data': 'The demultiplexed sequences to be summarized.'
     },
-    parameter_descriptions={},
+    parameter_descriptions={
+        'n': ('The number of sequences that should be selected at random for '
+              'quality score plots. The quality plots will present the '
+              'average positional qualities across all of the sequences '
+              'selected. If input sequences are paired end, plots will be '
+              'generated for both forward and reverse reads for the same `n` '
+              'sequences.')
+    },
     name='Summarize counts per sample.',
-    description=('Generate a summary of counts per sample from sequence data '
-                 'that has already been demultiplexed')
+    description=('Summarize counts per sample for all samples, and generate '
+                 'interactive positional quality plots based on `n` randomly '
+                 'selected sequences.')
 )
 
 importlib.import_module('q2_demux._transformer')

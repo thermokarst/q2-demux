@@ -1,0 +1,80 @@
+{% extends "tab-child.html" %}
+
+{% block head %}
+<script src="./app/vendor.bundle.js" charset="utf-8"></script>
+<style media="screen">
+  .table > thead > tr > th{
+    border-right: 1px solid #ddd;
+    border-bottom:0;
+  }
+
+  .table > tbody > tr > td{
+    border-right: 1px solid #ddd;
+  }
+
+  .table > thead > tr > th:last-of-type {
+    border-right: 0px;
+  }
+
+  .table > tbody > tr > td:last-of-type {
+    border-right: 0px;
+  }
+
+  .panel-body {
+    padding: 0;
+  }
+
+  .panel-body > .table{
+    margin-bottom:0px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if dangers %}
+  <div class="row">
+  {% for danger in dangers %}
+    <div class="alert alert-danger">
+      <strong>Danger:</strong> {{ danger }}
+    </div>
+  {% endfor %}
+  </div>
+{% endif %}
+{% if warnings %}
+  <div class="row">
+  {% for warning in warnings %}
+    <div class="alert alert-warning">
+      <strong>Warning:</strong> {{ warning }}
+    </div>
+  {% endfor %}
+  </div>
+{% endif %}
+<div class="row">
+  <div class="col-xs-12 text-center">
+    <p>
+      Click and drag on plot to zoom in. Double click to zoom back out to full size.
+    </p>
+    <p>
+      Hover over a box to see the parametric seven-number summary of the quality scores at the corresponding position.
+    </p>
+  </div>
+  {% if paired %}
+  <div id="forwardContainer" class="col-xs-12 col-md-6">
+    <h5 class="text-center">Forward Reads</h5>
+  </div>
+  <div id="reverseContainer" class="col-xs-12 col-md-6">
+    <h5 class="text-center">Reverse Reads</h5>
+  </div>
+  {% else %}
+  <div id="forwardContainer" class="col-xs-12 col-md-6 col-md-offset-3"></div>
+  {% endif %}
+  <div class="col-xs-12 text-center">
+    <p>
+      These plots were generated using a random sampling of {{ "{:,}".format(sample_n) }} out of {{ "{:,}".format(result_data['sum']) }} sequences without replacement.
+      Outlier quality scores are not shown in box plots for clarity.
+    </p>
+  </div>
+</div>
+<script src="./app/bundle.js" charset="utf-8"></script>
+<script src="./data.jsonp" charset="utf-8"></script>
+{% endblock %}

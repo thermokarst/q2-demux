@@ -6,30 +6,24 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
-import os.path
 import gzip
 import yaml
 import itertools
 import collections
 import collections.abc
-import pkg_resources
 import random
 import resource
 
 import skbio
-import pandas as pd
-import seaborn as sns
 import psutil
 
 import qiime2
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
-    FastqManifestFormat, YamlFormat, FastqGzFormat)
-import q2templates
+    FastqManifestFormat, YamlFormat)
 
 
-TEMPLATES = pkg_resources.resource_filename('q2_demux', 'assets')
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
 
 
@@ -217,51 +211,6 @@ class BarcodePairedSequenceFastqIterator(collections.abc.Iterable):
                      _trim_description(reverse_header.description)))
 
             yield barcode_record, forward_record, reverse_record
-
-
-def summarize(output_dir: str, data: SingleLanePerSampleSingleEndFastqDirFmt) \
-        -> None:
-    per_sample_fastqs = list(data.sequences.iter_views(FastqGzFormat))
-    per_sample_fastq_counts = {}
-    for relpath, view in per_sample_fastqs:
-        seqs = _read_fastq_seqs(str(view))
-        count = 0
-        for seq in seqs:
-            count += 1
-        sample_name = relpath.name.split('_', 1)[0]
-        per_sample_fastq_counts[sample_name] = count
-
-    result = pd.Series(per_sample_fastq_counts)
-    result.name = 'Sequence count'
-    result.index.name = 'Sample name'
-    result.sort_values(inplace=True, ascending=False)
-    result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
-                  header=True, index=True)
-
-    show_plot = len(per_sample_fastqs) > 1
-    if show_plot:
-        ax = sns.distplot(result, kde=False)
-        ax.set_xlabel('Number of sequences')
-        ax.set_ylabel('Frequency')
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
-
-    html = result.to_frame().to_html(classes='table table-striped table-hover')
-    html = html.replace('border="1"', 'border="0"')
-    index = os.path.join(TEMPLATES, 'index.html')
-    context = {
-        'result_data': {
-            'min': result.min(),
-            'median': result.median(),
-            'mean': result.mean(),
-            'max': result.max(),
-            'sum': result.sum()
-        },
-        'result': html,
-        'show_plot': show_plot
-    }
-    q2templates.render(index, output_dir, context=context)
 
 
 def _make_barcode_map(barcodes, rev_comp_mapping_barcodes):

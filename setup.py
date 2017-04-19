@@ -33,8 +33,9 @@ setup(
         ["q2-demux=q2_demux.plugin_setup:plugin"]
     },
     package_data={
-        'q2_demux.tests': ['data/**/*'],
-        'q2_demux': ['assets/index.html']
+        'q2_demux.test': ['data/**/*'],
+        'q2_demux': ['_summarize/assets/*.html',
+                     '_summarize/assets/app/*.js']
     },
     zip_safe=True,
 )
