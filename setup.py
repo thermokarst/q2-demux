@@ -16,13 +16,6 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     packages=find_packages(),
-    install_requires=['qiime2 == 2017.3.*', 'q2-types == 2017.3.*',
-                      'q2templates == 2017.3.*', 'numpy', 'pandas',
-                      'scikit-bio', 'seaborn', 'psutil',
-                      # `ipywidgets` included to avoid ShimWarning from
-                      # `seaborn` imports:
-                      #  https://github.com/mwaskom/seaborn/issues/874
-                      'ipywidgets'],
     author="Greg Caporaso",
     author_email="gregcaporaso@gmail.com",
     url="https://qiime2.org",
@@ -33,9 +26,11 @@ setup(
         ["q2-demux=q2_demux.plugin_setup:plugin"]
     },
     package_data={
-        'q2_demux.test': ['data/**/*'],
+        'q2_demux.tests': ['data/bad/*',
+                           'data/emp_multiplexed/*',
+                           'data/emp_multiplexed_single_end/*'],
         'q2_demux': ['_summarize/assets/*.html',
                      '_summarize/assets/app/*.js']
     },
-    zip_safe=True,
+    zip_safe=False,
 )
