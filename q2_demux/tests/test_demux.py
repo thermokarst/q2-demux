@@ -655,8 +655,8 @@ class SummarizeTests(unittest.TestCase):
 
         demux_data = emp_single(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
-        # TODO: Remove _PlotQualView wrapper
         with tempfile.TemporaryDirectory() as output_dir:
+            # TODO: Remove _PlotQualView wrapper
             result = summarize(output_dir, _PlotQualView(demux_data,
                                                          paired=False), n=2)
             self.assertTrue(result is None)
@@ -686,8 +686,8 @@ class SummarizeTests(unittest.TestCase):
 
         demux_data = emp_single(bsi, barcode_map)
         # test that an index.html file is created and that it has size > 0
-        # TODO: Remove _PlotQualView wrapper
         with tempfile.TemporaryDirectory() as output_dir:
+            # TODO: Remove _PlotQualView wrapper
             result = summarize(output_dir, _PlotQualView(demux_data,
                                                          paired=False), n=1)
             self.assertTrue(result is None)
@@ -774,3 +774,48 @@ class SummarizeTests(unittest.TestCase):
             with open(plot_fp, 'r') as fh:
                 html = fh.read()
                 self.assertIn('<strong>Danger:</strong>', html)
+
+    def test_inconsistent_sequence_length_single(self):
+        sequences = [('@s1/1 abc/1', 'GGGG', '+', 'YYYY'),
+                     ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
+                     ('@s3/1 abc/1', 'AA', '+', 'PP'),
+                     ('@s4/1 abc/1', 'T', '+', 'P')]
+        bsi = BarcodeSequenceFastqIterator(self.barcodes, sequences)
+
+        barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
+        barcode_map = qiime2.MetadataCategory(barcode_map)
+
+        demux_data = emp_single(bsi, barcode_map)
+        with tempfile.TemporaryDirectory() as output_dir:
+            with self.assertRaisesRegex(ValueError,
+                                        'Observed sequences of length'):
+                # TODO: Remove _PlotQualView wrapper
+                summarize(output_dir, _PlotQualView(demux_data,
+                                                    paired=False), n=2)
+
+    def test_inconsistent_sequence_length_paired(self):
+        forward = [('@s1/1 abc/1', 'G', '+', 'Y'),
+                   ('@s2/1 abc/1', 'CC', '+', 'PP'),
+                   ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
+                   ('@s4/1 abc/1', 'TTTT', '+', 'PPPP')]
+        reverse = [('@s1/1 abc/1', 'AAAA', '+', 'YYYY'),
+                   ('@s2/1 abc/1', 'TTT', '+', 'PPP'),
+                   ('@s3/1 abc/1', 'GG', '+', 'PP'),
+                   ('@s4/1 abc/1', 'C', '+', 'P')]
+        bpsi = BarcodePairedSequenceFastqIterator(self.barcodes, forward,
+                                                  reverse)
+
+        barcode_map = pd.Series(['AAAA', 'AACC'], index=['sample1', 'sample2'])
+        barcode_map = qiime2.MetadataCategory(barcode_map)
+
+        demux_data = emp_paired(bpsi, barcode_map)
+        with tempfile.TemporaryDirectory() as output_dir:
+            with self.assertRaisesRegex(ValueError,
+                                        'Observed sequences of length'):
+                # TODO: Remove _PlotQualView wrapper
+                summarize(output_dir, _PlotQualView(demux_data,
+                                                    paired=True), n=2)
+
+
+if __name__ == '__main__':
+    unittest.main()
