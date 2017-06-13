@@ -11,6 +11,7 @@ import os
 import pkg_resources
 import shutil
 import random
+import json
 
 import pandas as pd
 import seaborn as sns
@@ -55,50 +56,39 @@ def _link_sample_n_to_file(files, counts, subsample_ns):
 
 def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
-    seq_len = None
+    min_seq_len = {'forward': float('inf'), 'reverse': float('inf')}
     for fwd, rev, index in fastq_map:
         file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
         for i, (fseq, rseq) in enumerate(file_pair):
-            if seq_len is None:
-                seq_len = len(fseq[1])
-            if seq_len != len(fseq[1]):
-                raise ValueError(inconsistent_length_template
-                                 % (seq_len, len(fseq[1])))
-            if seq_len != len(rseq[1]):
-                raise ValueError(inconsistent_length_template
-                                 % (seq_len, len(rseq[1])))
+            min_seq_len['forward'] = min(min_seq_len['forward'], len(fseq[1]))
+            min_seq_len['reverse'] = min(min_seq_len['reverse'], len(rseq[1]))
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
                 qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
                 index.pop(0)
                 if len(index) == 0:
                     break
-
-    return qual_sample
+    return qual_sample, min_seq_len
 
 
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
-    seq_len = None
+    min_seq_len = {'forward': float('inf'), 'reverse': None}
     for file, index in fastq_map:
         for i, seq in enumerate(_read_fastq_seqs(file)):
-            if seq_len is None:
-                seq_len = len(seq[1])
-            if seq_len != len(seq[1]):
-                raise ValueError(inconsistent_length_template
-                                 % (seq_len, len(seq[1])))
+            min_seq_len['forward'] = min(min_seq_len['forward'], len(seq[1]))
             if i == index[0]:
                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
                 index.pop(0)
                 if len(index) == 0:
                     break
-    return qual_sample
+    return qual_sample, min_seq_len
 
 
 def _compute_stats_of_df(df):
     df_stats = df.describe(
         percentiles=[0.02, 0.09, 0.25, 0.5, 0.75, 0.91, 0.98])
-    drop_cols = df_stats.index.isin(['count', 'std', 'mean', 'min', 'max'])
+    drop_cols = df_stats.index.isin(['std', 'mean', 'min', 'max'])
     df_stats = df_stats[~drop_cols]
     return df_stats
 
@@ -145,10 +135,10 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     if paired:
         sample_map = [(file, rev[fwd.index(file)], link[file])
                       for file in link]
-        quality_scores = _subsample_paired(sample_map)
+        quality_scores, min_seq_len = _subsample_paired(sample_map)
     else:
         sample_map = [(file, link[file]) for file in link]
-        quality_scores = _subsample_single(sample_map)
+        quality_scores, min_seq_len = _subsample_single(sample_map)
 
     forward_scores = pd.DataFrame(quality_scores['forward'])
     forward_stats = _compute_stats_of_df(forward_scores)
@@ -194,7 +184,6 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
                   'url': 'quality-plot.html'}],
         'dangers': dangers,
         'warnings': warnings,
-        'sample_n': n
     }
     templates = [index, overview_template, quality_template]
     q2templates.render(templates, output_dir, context=context)
@@ -204,15 +193,11 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
 
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
+        json.dump({'n': int(n), 'totalSeqCount': int(sequence_count),
+                   'minSeqLen': min_seq_len}, fh)
+        fh.write(',')
         forward_stats.to_json(fh)
         if paired:
             fh.write(',')
             reverse_stats.to_json(fh)
         fh.write(');')
-
-
-inconsistent_length_template = ('Observed sequences of length %d '
-                                'and %d while generating a random '
-                                'subsample of sequences. Inconsistent '
-                                'length sequences are not supported '
-                                'in this visualization at this time.')

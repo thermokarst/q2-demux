@@ -11,9 +11,8 @@ import * as d3 from 'd3';
 import plotBoxes from './box';
 import { updateXTicks, addBrush } from './brush';
 
-const plot = (data, props, container) => {
+const plot = (data, props, container, seqProps) => {
   const plotContainer = d3.select(container);
-
   const svg = plotContainer
     .append('svg')
       .attr('class', 'col-xs-12')
@@ -21,6 +20,17 @@ const plot = (data, props, container) => {
       .style('margin', '0 auto')
       .attr('width', props.width + props.margin.left + props.margin.right)
       .attr('height', props.height + props.margin.top + props.margin.bottom);
+
+  plotContainer
+    .append('div')
+    .attr('class', 'col-xs-12')
+    .append('p')
+      .attr('class', 'random-sampling')
+      .html(`These plots were generated using a random sampling of ${seqProps.n}
+             out of ${seqProps.totalSeqCount} sequences without replacement. The
+             minimum sequence length identified during subsampling was
+             ${seqProps.minSeqLen[data.direction]} bases. Outlier quality scores are not shown in box
+             plots for clarity.`);
 
   const panel = plotContainer
     .append('div')
@@ -87,8 +97,8 @@ const plot = (data, props, container) => {
   svg.attr('height', props.height + props.margin.bottom + props.margin.top);
   svg.attr('width', x.range()[0] + x.range()[1]);
 
-  addBrush(svg, data, x, y, x0, y0, xAxis, yAxis, ticks)
-  plotBoxes(svg, data, x, y);
+  addBrush(svg, data, x, y, x0, y0, xAxis, yAxis, ticks, seqProps)
+  plotBoxes(svg, data, x, y, seqProps);
 
   svg.append('rect')
       .attr('width', props.width + props.margin.left + props.margin.right)
@@ -135,7 +145,7 @@ const plot = (data, props, container) => {
       .text('Sequence Base');
 };
 
-const initializePlot = (data) => {
+const initializePlot = (data, seqProps) => {
   const margin = { top: 10, right: 30, bottom: 30, left: 30 };
   const width = d3.select('#forwardContainer').node().offsetWidth;
   const props = {
@@ -144,7 +154,8 @@ const initializePlot = (data) => {
     height: ((width * 9) / 16) - margin.top - margin.bottom };
 
   Object.keys(data).forEach((direction) => {
-    plot(data[direction], props, `#${direction}Container`);
+    data[direction].direction = direction
+    plot(data[direction], props, `#${direction}Container`, seqProps);
   });
 };
 
