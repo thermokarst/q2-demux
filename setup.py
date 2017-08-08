@@ -30,7 +30,7 @@ setup(
                            'data/emp_multiplexed/*',
                            'data/emp_multiplexed_single_end/*'],
         'q2_demux': ['_summarize/assets/*.html',
-                     '_summarize/assets/app/*.js']
+                     '_summarize/assets/dist/*']
     },
     zip_safe=False,
 )

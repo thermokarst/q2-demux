@@ -192,8 +192,8 @@ def summarize(output_dir: str, data: _PlotQualView, n: int=10000) -> None:
     templates = [index, overview_template, quality_template]
     q2templates.render(templates, output_dir, context=context)
 
-    shutil.copytree(os.path.join(TEMPLATES, 'assets', 'app'),
-                    os.path.join(output_dir, 'app'))
+    shutil.copytree(os.path.join(TEMPLATES, 'assets', 'dist'),
+                    os.path.join(output_dir, 'dist'))
 
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
