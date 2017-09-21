@@ -28,7 +28,9 @@ setup(
     package_data={
         'q2_demux.tests': ['data/bad/*',
                            'data/emp_multiplexed/*',
-                           'data/emp_multiplexed_single_end/*'],
+                           'data/emp_multiplexed_single_end/*',
+                           'data/single_sample_multiple_files/*',
+                           ],
         'q2_demux': ['_summarize/assets/*.html',
                      '_summarize/assets/dist/*']
     },
