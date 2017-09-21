@@ -11,6 +11,7 @@ import unittest.mock as mock
 import os.path
 import tempfile
 import json
+import shutil
 
 import pandas as pd
 import skbio
@@ -18,11 +19,13 @@ import qiime2
 import numpy as np
 import numpy.testing as npt
 
+from qiime2.plugin.testing import TestPluginBase
 from q2_demux._demux import (BarcodeSequenceFastqIterator,
                              BarcodePairedSequenceFastqIterator)
 from q2_demux import emp_single, emp_paired, summarize
 from q2_types.per_sample_sequences import (
-    FastqGzFormat, FastqManifestFormat, YamlFormat)
+    FastqGzFormat, FastqManifestFormat, YamlFormat,
+    SingleLanePerSampleSingleEndFastqDirFmt)
 from q2_demux._summarize._visualizer import _PlotQualView
 
 
@@ -635,9 +638,11 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         self.check_valid(bpsi, self.barcode_map)
 
 
-class SummarizeTests(unittest.TestCase):
+class SummarizeTests(TestPluginBase):
+    package = 'q2_demux.tests'
 
     def setUp(self):
+        super().setUp()
         self.barcodes = [('@s1/2 abc/2', 'AAAA', '+', 'YYYY'),
                          ('@s2/2 abc/2', 'AAAA', '+', 'PPPP'),
                          ('@s3/2 abc/2', 'AAAA', '+', 'PPPP'),
@@ -706,6 +711,44 @@ class SummarizeTests(unittest.TestCase):
             self.assertFalse(os.path.exists(pdf_fp))
             png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
             self.assertFalse(os.path.exists(png_fp))
+            with open(index_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('<td>Minimum:</td><td>1</td>', html)
+                self.assertIn('<td>Maximum:</td><td>1</td>', html)
+
+    def test_single_sample_multiple_files(self):
+        # Note, this case came up on the QIIME 2 Forum, due to a user running
+        # `summarize` with demuxed sequences that all had the same Sample ID
+        # in the internal MANIFEST file. With versions of seaborn greater than
+        # 0.8.0 this is no longer a problem, but on prior versions, the user
+        # would see the following error:
+        # TypeError: len() of unsized object
+        files = ['sample1_S0_L001_R1_001.fastq.gz',
+                 'sample2_S0_L001_R1_001.fastq.gz',
+                 'sample3_S0_L001_R1_001.fastq.gz',
+                 'MANIFEST', 'metadata.yml']
+        for f in files:
+            shutil.copy(
+                self.get_data_path('single_sample_multiple_files/%s' % f),
+                self.temp_dir.name)
+
+        demux_data = SingleLanePerSampleSingleEndFastqDirFmt(
+                self.temp_dir.name, mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            # TODO: Remove _PlotQualView wrapper
+            result = summarize(output_dir, _PlotQualView(demux_data,
+                                                         paired=False), n=1)
+            self.assertTrue(result is None)
+            index_fp = os.path.join(output_dir, 'overview.html')
+            self.assertTrue(os.path.exists(index_fp))
+            self.assertTrue(os.path.getsize(index_fp) > 0)
+            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
+            self.assertTrue(os.path.exists(csv_fp))
+            self.assertTrue(os.path.getsize(csv_fp) > 0)
+            pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
+            self.assertTrue(os.path.exists(pdf_fp))
+            png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
+            self.assertTrue(os.path.exists(png_fp))
             with open(index_fp, 'r') as fh:
                 html = fh.read()
                 self.assertIn('<td>Minimum:</td><td>1</td>', html)
