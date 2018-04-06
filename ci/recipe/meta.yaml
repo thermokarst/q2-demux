@@ -24,6 +24,7 @@ requirements:
     - numpy
     - scikit-bio
     - seaborn >=0.8.1
+    - pyyaml
     - psutil
     # `ipywidgets` included to avoid ShimWarning from
     # `seaborn` imports:
