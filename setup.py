@@ -30,6 +30,8 @@ setup(
                            'data/emp_multiplexed/*',
                            'data/emp_multiplexed_single_end/*',
                            'data/single_sample_multiple_files/*',
+                           'data/subsample_single_end/*',
+                           'data/subsample_paired_end/*',
                            ],
         'q2_demux': ['_summarize/assets/*.html',
                      '_summarize/assets/dist/*']
