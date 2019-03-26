@@ -194,7 +194,8 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
         fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
 
-    html = q2templates.df_to_html(result.to_frame())
+    html_df = result.to_frame().reset_index(drop=False)
+    html = q2templates.df_to_html(html_df, index=False)
     index = os.path.join(TEMPLATES, 'assets', 'index.html')
     overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
     quality_template = os.path.join(TEMPLATES, 'assets', 'quality-plot.html')
