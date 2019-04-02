@@ -66,6 +66,7 @@ plugin.methods.register_function(
                      EMPSingleEndSequences |
                      EMPPairedEndSequences)},
     parameters={'barcodes': MetadataColumn[Categorical],
+                'golay_error_correction': Bool,
                 'rev_comp_barcodes': Bool,
                 'rev_comp_mapping_barcodes': Bool},
     outputs=[('per_sample_sequences', SampleData[SequencesWithQuality])],
@@ -75,6 +76,8 @@ plugin.methods.register_function(
     parameter_descriptions={
         'barcodes': 'The sample metadata column containing the per-sample '
                     'barcodes.',
+        'golay_error_correction': 'Perform 12nt Golay error correction on the '
+                                  'barcode reads.',
         'rev_comp_barcodes': 'If provided, the barcode sequence reads will be '
                              'reverse complemented prior to demultiplexing.',
         'rev_comp_mapping_barcodes': 'If provided, the barcode sequences in '
@@ -96,6 +99,7 @@ plugin.methods.register_function(
     function=q2_demux.emp_paired,
     inputs={'seqs': EMPPairedEndSequences},
     parameters={'barcodes': MetadataColumn[Categorical],
+                'golay_error_correction': Bool,
                 'rev_comp_barcodes': Bool,
                 'rev_comp_mapping_barcodes': Bool},
     outputs=[
@@ -107,6 +111,8 @@ plugin.methods.register_function(
     parameter_descriptions={
         'barcodes': 'The sample metadata column containing the per-sample '
                     'barcodes.',
+        'golay_error_correction': 'Perform 12nt Golay error correction on the '
+                                  'barcode reads.',
         'rev_comp_barcodes': 'If provided, the barcode sequence reads will be '
                              'reverse complemented prior to demultiplexing.',
         'rev_comp_mapping_barcodes': 'If provided, the barcode sequences in '

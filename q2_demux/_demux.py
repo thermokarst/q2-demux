@@ -22,6 +22,7 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqManifestFormat, YamlFormat)
+from ._ecc import decode_emp_golay_12
 
 
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
@@ -242,6 +243,7 @@ def _write_metadata_yaml(dir_fmt):
 
 def emp_single(seqs: BarcodeSequenceFastqIterator,
                barcodes: qiime2.CategoricalMetadataColumn,
+               golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
                ) -> SingleLanePerSampleSingleEndFastqDirFmt:
@@ -264,6 +266,11 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
         barcode_read = barcode_read[:barcode_len]
+
+        if golay_error_correction:
+            barcode_read, ecc_errors = decode_emp_golay_12(barcode_read)
+        else:
+            ecc_errors = None
 
         try:
             sample_id = barcode_map[barcode_read]
@@ -315,6 +322,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
 def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                barcodes: qiime2.CategoricalMetadataColumn,
+               golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
                ) -> SingleLanePerSamplePairedEndFastqDirFmt:
@@ -333,6 +341,11 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
         barcode_read = barcode_read[:barcode_len]
+
+        if golay_error_correction:
+            barcode_read, ecc_errors = decode_emp_golay_12(barcode_read)
+        else:
+            ecc_errors = None
 
         try:
             sample_id = barcode_map[barcode_read]
