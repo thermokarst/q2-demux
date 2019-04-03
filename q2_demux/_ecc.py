@@ -18,7 +18,8 @@ golay sequence (4096 options), not just those you used in the study.
 this module implements *a* golay (24,12,8) code.  That's 24 bit codewords,
 12 bits of information, min 8 bits (hamming distance) between any 2 codewords
 there are 2**12 = 4096 codewords, all <= 3 bit errors are corrected, 4 bit
-errors are detected, and worse errors can cause erroneously corrected codewords.
+errors are detected, and worse errors can cause erroneously corrected
+codewords.
 
 Since DNA has 4 nucleotides, each base represents 2 bits (see
 DEFAULT_GOLAY_NT_TO_BITS).  The default values represent A <--> C and  G <--> T
@@ -44,9 +45,9 @@ TO DOs:
 * haven't tested on all 2**24 bitvectors, could do that to be thorough
 * test speed performance
 """
-
 import numpy as np
 import functools
+
 
 class GolayDecoder(object):
     GOLAY_ECC_MAP = None
@@ -118,7 +119,7 @@ class GolayDecoder(object):
         for e in seqs:
             if len(e) != 12:
                 result.append(e)
-            elif decode(e)[1] > 0:
+            elif self.decode(e)[1] > 0:
                 result.append(e)
         return result
 
@@ -138,8 +139,8 @@ class GolayDecoder(object):
         str, int
             The corrected barcode and the number of observed errors.
 
-            If a 4 bit error is detected, the corrected barcode returned will be
-            None.
+            If a 4 bit error is detected, the corrected barcode returned will
+            be None.
         """
         if not set(seq).issubset({'A', 'T', 'G', 'C'}):
             return None, 4

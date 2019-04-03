@@ -365,11 +365,12 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
-        barcode_read = barcode_read[:barcode_len]
+        raw_barcode_read = barcode_read[:barcode_len]
 
         if golay_error_correction:
-            barcode_read, ecc_errors = decode_emp_golay_12(barcode_read)
+            barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
         else:
+            barcode_read = raw_barcode_read
             ecc_errors = None
 
         try:

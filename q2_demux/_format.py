@@ -64,10 +64,10 @@ class ErrorCorrectionDetailsFmt(model.TextFileFormat):
         line = open(str(self)).readline()
         hdr = line.strip().split(',')
         expected = ['sample-id',
-		    'barcode-sequence-id',
-		    'barcode-uncorrected',
-		    'barcode-corrected',
-		    'barcode-errors']
+                    'barcode-sequence-id',
+                    'barcode-uncorrected',
+                    'barcode-corrected',
+                    'barcode-errors']
         return hdr == expected
 
 

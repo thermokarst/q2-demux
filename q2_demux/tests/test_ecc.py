@@ -131,22 +131,15 @@ class ECCTests(unittest.TestCase):
         self.assertEqual(len(syns), len(errvecs))
         self.assertEqual(len(errvecs), 2325)
 
-    #def test_make_3bit_errors(self):
-    #    """ 3 bit errors should have all <= 3 bit errs, no >3 bit errors"""
-    #    bitvecs = set([tuple(r) for r in golay._make_3bit_errors()])
-
-    #    self.assertIn((0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-    #                   0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0), bitvecs)
-    #    self.assertIn((0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-    #                   0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0), bitvecs)
-
     def test_make_3bit_errors(self):
         """ 3 bit errors should have all <= 3 bit errs, no >3 bit errors"""
         bitvecs = golay._make_3bit_errors()
-        self.assertTrue(list([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-                              0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]) in map(list, bitvecs))
-        self.assertFalse(list([0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
-                               0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0]) in map(list, bitvecs))
+        a = list([0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                  0, 0, 0, 0])
+        b = list([0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0,
+                  0, 1, 0, 0])
+        self.assertTrue(a in map(list, bitvecs))
+        self.assertFalse(b in map(list, bitvecs))
 
     def test_golay600_codes(self):
         """ all 600 codes should be left uncorrected, 0 errors"""
@@ -191,6 +184,7 @@ class ECCTests(unittest.TestCase):
             corr, num_errs = golay.decode(err_bc)
             self.assertEqual(corr, None)
             self.assertEqual(num_errs, 4)
+
 
 # random 24 bit vectors
 ten_bitvecs = np.array([
