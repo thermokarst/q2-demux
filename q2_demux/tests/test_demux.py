@@ -214,7 +214,7 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                     ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                     ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
-        golaybarcodes = [# ATGATGCGACCA -> ACGATGCGACCA
+        golaybarcodes = [  # ATGATGCGACCA -> ACGATGCGACCA
                          ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
                          ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
                          ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
@@ -530,7 +530,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                          ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                          ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
-        golaybarcodes = [# ATGATGCGACCA -> ACGATGCGACCA
+        golaybarcodes = [  # ATGATGCGACCA -> ACGATGCGACCA
                          ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
                          ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
                          ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
