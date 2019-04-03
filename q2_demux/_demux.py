@@ -290,7 +290,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                                barcode_record[0],
                                raw_barcode_read,
                                barcode_read,
-                               str(ecc_errors)))
+                               ecc_errors))
 
         if sample_id not in per_sample_fastqs:
             # The barcode id, lane number and read number are not relevant
@@ -385,7 +385,7 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                                barcode_record[0],
                                raw_barcode_read,
                                barcode_read,
-                               str(ecc_errors)))
+                               ecc_errors))
 
         if sample_id not in per_sample_fastqs:
             barcode_id = len(per_sample_fastqs) + 1

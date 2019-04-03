@@ -15,6 +15,7 @@ import shutil
 import random
 
 import pandas as pd
+import pandas.testing as pdt
 import skbio
 import qiime2
 import numpy as np
@@ -213,6 +214,20 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                     ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                     ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
+        golaybarcodes = [# ATGATGCGACCA -> ACGATGCGACCA
+                         ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
+                         ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s4/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s5/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
+                         # CATTGTATCAAC -> CATCGTATCAAC
+                         ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP'),
+                         ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
+
         self.sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
                           ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                           ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
@@ -225,13 +240,24 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                           ('@s10/1 abc/1', 'GCA', '+', 'PPP'),
                           ('@s11/1 abc/1', 'TGA', '+', 'PPP')]
         self.bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
-
         barcode_map = pd.Series(
             ['AAAA', 'AACC', 'TTAA', 'GGAA', 'CGGC'], name='bc',
             index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
                             'sample5'], name='id')
         )
         self.barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
+
+        self.bsi_werr = BarcodeSequenceFastqIterator(golaybarcodes,
+                                                     self.sequences)
+
+        golay_barcode_map = pd.Series(
+            ['ACGATGCGACCA', 'ACACACTATGGC', 'AGCTATCCACGA',
+             'CTAACGCAGTCA', 'CATCGTATCAAC'], name='bc',
+            index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
+                            'sample5'], name='id')
+        )
+        self.golay_barcode_map = qiime2.CategoricalMetadataColumn(
+            golay_barcode_map)
 
     def test_valid(self):
         actual, error_detail = emp_single(self.bsi, self.barcode_map,
@@ -269,6 +295,55 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                         'sample5,sample5_4_L001_R1_001.fastq.gz,forward\n',
                         'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
         self._compare_manifests(act_manifest, exp_manifest)
+
+    def test_valid_with_barcode_errors(self):
+        actual, error_detail = emp_single(self.bsi_werr,
+                                          self.golay_barcode_map,
+                                          golay_error_correction=True)
+        output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
+        # five per-sample files were written
+        self.assertEqual(len(output_fastq), 5)
+
+        # sequences in sample1 are correct
+        self._validate_sample_fastq(
+            output_fastq[0][1].open(), self.sequences, [0, 5])
+
+        # sequences in sample2 are correct
+        self._validate_sample_fastq(
+            output_fastq[1][1].open(), self.sequences, [2, 4])
+
+        # sequences in sample3 are correct
+        self._validate_sample_fastq(
+            output_fastq[2][1].open(), self.sequences, [1, 3])
+
+        # sequences in sample4 are correct
+        self._validate_sample_fastq(
+            output_fastq[3][1].open(), self.sequences, [7, 10])
+
+        # sequences in sample5 are correct
+        self._validate_sample_fastq(
+            output_fastq[4][1].open(), self.sequences, [6, 8, 9])
+
+        # manifest is correct
+        act_manifest = list(actual.manifest.view(FastqManifestFormat).open())
+        exp_manifest = ['sample-id,filename,direction\n',
+                        'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
+                        'sample3,sample3_2_L001_R1_001.fastq.gz,forward\n',
+                        'sample2,sample2_3_L001_R1_001.fastq.gz,forward\n',
+                        'sample5,sample5_4_L001_R1_001.fastq.gz,forward\n',
+                        'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
+        self._compare_manifests(act_manifest, exp_manifest)
+
+        exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2', 'ATGATGCGACCA',
+                                    'ACGATGCGACCA', 1],
+                                  ['sample5', '@s7/2 abc/2', 'CATTGTATCAAC',
+                                   'CATCGTATCAAC', 1]],
+                                  columns=['sample-id', 'barcode-sequence-id',
+                                           'barcode-uncorrected',
+                                           'barcode-corrected',
+                                           'barcode-errors'])
+        exp_errors.set_index('sample-id', inplace=True)
+        pdt.assert_frame_equal(error_detail, exp_errors)
 
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 3)
     def test_valid_small_open_fh_limit(self):
@@ -455,6 +530,20 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                          ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                          ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
+        golaybarcodes = [# ATGATGCGACCA -> ACGATGCGACCA
+                         ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
+                         ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s4/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s5/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
+                         # CATTGTATCAAC -> CATCGTATCAAC
+                         ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP'),
+                         ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
+
         self.forward = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
                         ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                         ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
@@ -488,6 +577,19 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                             'sample4', 'sample5'], name='id')
         )
         self.barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
+
+        self.bpsi_werr = BarcodePairedSequenceFastqIterator(golaybarcodes,
+                                                            self.forward,
+                                                            self.reverse)
+
+        golay_barcode_map = pd.Series(
+            ['ACGATGCGACCA', 'ACACACTATGGC', 'AGCTATCCACGA',
+             'CTAACGCAGTCA', 'CATCGTATCAAC'], name='bc',
+            index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
+                            'sample5'], name='id')
+        )
+        self.golay_barcode_map = qiime2.CategoricalMetadataColumn(
+            golay_barcode_map)
 
     def check_valid(self, *args, **kwargs):
         actual, ecc = emp_paired(*args, **kwargs)
@@ -562,9 +664,28 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
 
         self._compare_manifests(act_manifest, exp_manifest)
 
+        if kwargs['golay_error_correction']:
+            exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2',
+                                        'ATGATGCGACCA',
+                                        'ACGATGCGACCA', 1],
+                                      ['sample5', '@s7/2 abc/2',
+                                       'CATTGTATCAAC',
+                                       'CATCGTATCAAC', 1]],
+                                      columns=['sample-id',
+                                               'barcode-sequence-id',
+                                               'barcode-uncorrected',
+                                               'barcode-corrected',
+                                               'barcode-errors'])
+            exp_errors.set_index('sample-id', inplace=True)
+            pdt.assert_frame_equal(ecc, exp_errors)
+
     def test_valid(self):
         self.check_valid(self.bpsi, self.barcode_map,
                          golay_error_correction=False)
+
+    def test_valid_with_barcode_errors(self):
+        self.check_valid(self.bpsi_werr, self.golay_barcode_map,
+                         golay_error_correction=True)
 
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 6)
     def test_valid_small_open_fh_limit(self):
