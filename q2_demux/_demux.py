@@ -13,6 +13,7 @@ import collections
 import collections.abc
 import random
 import resource
+import pandas as pd
 
 import skbio
 import psutil
@@ -22,7 +23,7 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqManifestFormat, YamlFormat)
-from ._ecc import decode_emp_golay_12
+from ._ecc import GolayDecoder
 
 
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
@@ -246,11 +247,15 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
-               ) -> SingleLanePerSampleSingleEndFastqDirFmt:
+               ) -> (SingleLanePerSampleSingleEndFastqDirFmt,
+                     pd.DataFrame):
 
     result = SingleLanePerSampleSingleEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
         barcodes, rev_comp_mapping_barcodes)
+
+    if golay_error_correction:
+        decoder = GolayDecoder()
 
     manifest = FastqManifestFormat()
     manifest_fh = manifest.open()
@@ -260,16 +265,17 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
     manifest_fh.write('# joined reads\n')
 
     per_sample_fastqs = {}
-
+    ec_details = []
     for barcode_record, sequence_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
-        barcode_read = barcode_read[:barcode_len]
+        raw_barcode_read = barcode_read[:barcode_len]
 
         if golay_error_correction:
-            barcode_read, ecc_errors = decode_emp_golay_12(barcode_read)
+            barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
         else:
+            barcode_read = raw_barcode_read
             ecc_errors = None
 
         try:
@@ -278,6 +284,13 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
             # TODO: this should ultimately be logged, but we don't currently
             # have support for that.
             continue
+
+        if ecc_errors:
+            ec_details.append((sample_id,
+                               barcode_record[0],
+                               raw_barcode_read,
+                               barcode_read,
+                               str(ecc_errors)))
 
         if sample_id not in per_sample_fastqs:
             # The barcode id, lane number and read number are not relevant
@@ -317,7 +330,14 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    return result
+    columns = ['sample-id',
+               'barcode-sequence-id',
+               'barcode-uncorrected',
+               'barcode-corrected',
+               'barcode-errors']
+    details = pd.DataFrame(ec_details, columns=columns).set_index('sample-id')
+
+    return result, details
 
 
 def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
@@ -325,17 +345,22 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
-               ) -> SingleLanePerSamplePairedEndFastqDirFmt:
+               ) -> (SingleLanePerSamplePairedEndFastqDirFmt,
+                     pd.DataFrame):
 
     result = SingleLanePerSamplePairedEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
         barcodes, rev_comp_mapping_barcodes)
+
+    if golay_error_correction:
+        decoder = GolayDecoder()
 
     manifest = FastqManifestFormat()
     manifest_fh = manifest.open()
     manifest_fh.write('sample-id,filename,direction\n')
 
     per_sample_fastqs = {}
+    ec_details = []
     for barcode_record, forward_record, reverse_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
@@ -353,6 +378,13 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
             # TODO: this should ultimately be logged, but we don't currently
             # have support for that.
             continue
+
+        if ecc_errors:
+            ec_details.append((sample_id,
+                               barcode_record[0],
+                               raw_barcode_read,
+                               barcode_read,
+                               str(ecc_errors)))
 
         if sample_id not in per_sample_fastqs:
             barcode_id = len(per_sample_fastqs) + 1
@@ -402,4 +434,11 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    return result
+    columns = ['sample-id',
+               'barcode-sequence-id',
+               'barcode-uncorrected',
+               'barcode-corrected',
+               'barcode-errors']
+    details = pd.DataFrame(ec_details, columns=columns).set_index('sample-id')
+
+    return result, details

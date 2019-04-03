@@ -10,14 +10,12 @@ import unittest
 import numpy as np
 import numpy.testing as npt
 
-from q2_demux._ecc import decode_emp_golay_12
-import q2_demux._ecc as golay
+from q2_demux._ecc import GolayDecoder
+
+golay = GolayDecoder()
 
 
 class ECCTests(unittest.TestCase):
-    def test_decode_emp_golay_12(self):
-        pass
-
     def test_golay_module1(self):
         """switching the last base, decode() should recover the original barcode
         """
@@ -33,14 +31,10 @@ class ECCTests(unittest.TestCase):
 
     def test_golay_matches_old_code(self):
         """ decode should behave as micah's code did, i.e., same golay encoding
-
-        this requires
-        DEFAULT_NT_TO_BITS = { "A":"11",  "C":"00", "T":"10", "G":"01"}
         """
-        NT_TO_BITS = {"A": "11", "C": "00", "T": "10", "G": "01"}
         original = 'GCATCGTCAACA'
         rec = 'GCATCGTCCACA'
-        corr, nt_errs = golay.decode(rec, NT_TO_BITS)
+        corr, nt_errs = golay.decode(rec)
         self.assertEqual(corr, original)
         self.assertEqual(nt_errs, 2)
 
@@ -136,6 +130,15 @@ class ECCTests(unittest.TestCase):
         self.assertEqual(len(set(syns)), len(syns))
         self.assertEqual(len(syns), len(errvecs))
         self.assertEqual(len(errvecs), 2325)
+
+    #def test_make_3bit_errors(self):
+    #    """ 3 bit errors should have all <= 3 bit errs, no >3 bit errors"""
+    #    bitvecs = set([tuple(r) for r in golay._make_3bit_errors()])
+
+    #    self.assertIn((0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    #                   0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0), bitvecs)
+    #    self.assertIn((0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    #                   0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0), bitvecs)
 
     def test_make_3bit_errors(self):
         """ 3 bit errors should have all <= 3 bit errs, no >3 bit errors"""

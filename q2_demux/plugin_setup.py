@@ -17,8 +17,9 @@ from q2_types.per_sample_sequences import (
     JoinedSequencesWithQuality)
 
 import q2_demux
-from ._type import RawSequences, EMPSingleEndSequences, EMPPairedEndSequences
-from ._format import (EMPMultiplexedDirFmt,
+from ._type import (RawSequences, EMPSingleEndSequences, EMPPairedEndSequences,
+                    ErrorCorrectionDetails)
+from ._format import (EMPMultiplexedDirFmt, ErrorCorrectionDetailsDirFmt,
                       EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
                       EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
 
@@ -35,9 +36,10 @@ plugin = Plugin(
 )
 
 plugin.register_semantic_types(
-    RawSequences, EMPSingleEndSequences, EMPPairedEndSequences)
+    RawSequences, EMPSingleEndSequences, EMPPairedEndSequences,
+    ErrorCorrectionDetails)
 
-plugin.register_formats(EMPMultiplexedDirFmt,
+plugin.register_formats(EMPMultiplexedDirFmt, ErrorCorrectionDetailsDirFmt,
                         EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
                         EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
 
@@ -52,12 +54,15 @@ plugin.register_semantic_type_to_format(
     artifact_format=EMPSingleEndDirFmt
 )
 
-
 plugin.register_semantic_type_to_format(
     EMPPairedEndSequences,
     artifact_format=EMPPairedEndDirFmt
 )
 
+plugin.register_semantic_type_to_format(
+    ErrorCorrectionDetails,
+    artifact_format=ErrorCorrectionDetailsDirFmt
+)
 
 plugin.methods.register_function(
     function=q2_demux.emp_single,
@@ -69,7 +74,8 @@ plugin.methods.register_function(
                 'golay_error_correction': Bool,
                 'rev_comp_barcodes': Bool,
                 'rev_comp_mapping_barcodes': Bool},
-    outputs=[('per_sample_sequences', SampleData[SequencesWithQuality])],
+    outputs=[('per_sample_sequences', SampleData[SequencesWithQuality]),
+             ('error_correction_details', ErrorCorrectionDetails)],
     input_descriptions={
         'seqs': 'The single-end sequences to be demultiplexed.'
     },
@@ -85,7 +91,9 @@ plugin.methods.register_function(
                                      'complemented prior to demultiplexing.'
     },
     output_descriptions={
-        'per_sample_sequences': 'The resulting demultiplexed sequences.'
+        'per_sample_sequences': 'The resulting demultiplexed sequences.',
+        'error_correction_details': 'Detail about the barcode error '
+                                    'corrections.'
     },
     name='Demultiplex sequence data generated with the EMP protocol.',
     description=('Demultiplex sequence data (i.e., map barcode reads to '
@@ -103,7 +111,8 @@ plugin.methods.register_function(
                 'rev_comp_barcodes': Bool,
                 'rev_comp_mapping_barcodes': Bool},
     outputs=[
-        ('per_sample_sequences', SampleData[PairedEndSequencesWithQuality])
+        ('per_sample_sequences', SampleData[PairedEndSequencesWithQuality]),
+        ('error_correction_details', ErrorCorrectionDetails),
     ],
     input_descriptions={
         'seqs': 'The paired-end sequences to be demultiplexed.'
@@ -120,7 +129,9 @@ plugin.methods.register_function(
                                      'complemented prior to demultiplexing.'
     },
     output_descriptions={
-        'per_sample_sequences': 'The resulting demultiplexed sequences.'
+        'per_sample_sequences': 'The resulting demultiplexed sequences.',
+        'error_correction_details': 'Detail about the barcode error '
+                                    'corrections.'
     },
     name=('Demultiplex paired-end sequence data generated with the EMP '
           'protocol.'),

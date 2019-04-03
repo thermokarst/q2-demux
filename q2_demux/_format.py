@@ -57,3 +57,19 @@ class EMPPairedEndCasavaDirFmt(model.DirectoryFormat):
 
     barcodes = model.File(
         r'Undetermined_S0_L001_I1_001.fastq.gz', format=FastqGzFormat)
+
+
+class ErrorCorrectionDetailsFmt(model.TextFileFormat):
+    def sniff(self):
+        line = open(str(self)).readline()
+        hdr = line.strip().split(',')
+        expected = ['sample-id',
+		    'barcode-sequence-id',
+		    'barcode-uncorrected',
+		    'barcode-corrected',
+		    'barcode-errors']
+        return hdr == expected
+
+
+ErrorCorrectionDetailsDirFmt = model.SingleFileDirectoryFormat(
+    'ErrorCorrectionDetailsDirFmt', 'details.csv', ErrorCorrectionDetailsFmt)

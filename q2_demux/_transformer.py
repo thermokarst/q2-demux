@@ -8,17 +8,21 @@
 
 import shutil
 
+import pandas as pd
+import numpy as np
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqGzFormat)
+from qiime2 import Metadata
 
 from .plugin_setup import plugin
 from ._demux import (BarcodeSequenceFastqIterator,
                      BarcodePairedSequenceFastqIterator, _read_fastq_seqs)
 from ._format import (EMPMultiplexedDirFmt,
                       EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
-                      EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
+                      EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt,
+                      ErrorCorrectionDetailsFmt)
 from ._summarize import _PlotQualView
 
 
@@ -112,3 +116,36 @@ def _7(dirfmt: EMPPairedEndDirFmt) -> BarcodeSequenceFastqIterator:
     # generators will work.
     result.__dirfmt = dirfmt
     return result
+
+
+_ec_details_column_dtypes = {
+    'sample-id': np.str,
+    'barcode-sequence-id': np.str,
+    'barcode-uncorrected': np.str,
+    'barcode-corrected': np.str,
+    'barcode-errors': np.number
+}
+
+
+def _ec_details_to_df(ff):
+    # https://github.com/pandas-dev/pandas/issues/9435
+    df = pd.read_csv(str(ff), dtype=_ec_details_column_dtypes)
+    df.set_index('sample-id', inplace=True)
+    return df
+
+
+@plugin.register_transformer
+def _8(data: pd.DataFrame) -> ErrorCorrectionDetailsFmt:
+    ff = ErrorCorrectionDetailsFmt()
+    data.to_csv(str(ff))
+    return ff
+
+
+@plugin.register_transformer
+def _9(ff: ErrorCorrectionDetailsFmt) -> pd.DataFrame:
+    return _ec_details_to_df(ff)
+
+
+@plugin.register_transformer
+def _10(ff: ErrorCorrectionDetailsFmt) -> Metadata:
+    return Metadata(_ec_details_to_df(ff))
