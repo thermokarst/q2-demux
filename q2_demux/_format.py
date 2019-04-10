@@ -60,7 +60,7 @@ class EMPPairedEndCasavaDirFmt(model.DirectoryFormat):
 
 
 class ErrorCorrectionDetailsFmt(model.TextFileFormat):
-    def sniff(self):
+    def _validate_(self, level):
         line = open(str(self)).readline()
         hdr = line.strip().split(',')
         expected = ['sample-id',
