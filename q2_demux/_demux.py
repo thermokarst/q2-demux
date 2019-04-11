@@ -292,6 +292,16 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                                barcode_read,
                                ecc_errors))
 
+            # See Hamady and Knight 2009 Genome Research for the justification
+            # of a three bit filter:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
+            if ecc_errors > 3:
+                continue
+
         if sample_id not in per_sample_fastqs:
             # The barcode id, lane number and read number are not relevant
             # here. We might ultimately want to use a dir format other than
@@ -386,6 +396,16 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                                raw_barcode_read,
                                barcode_read,
                                ecc_errors))
+
+            # See Hamady and Knight 2009 Genome Research for the justification
+            # of a three bit filter:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
+            if ecc_errors > 3:
+                continue
 
         if sample_id not in per_sample_fastqs:
             barcode_id = len(per_sample_fastqs) + 1

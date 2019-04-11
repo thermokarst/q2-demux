@@ -9,7 +9,7 @@
 import importlib
 
 from qiime2.plugin import (
-    Plugin, MetadataColumn, Categorical, Bool, Int, Float, Range
+    Plugin, MetadataColumn, Categorical, Bool, Int, Float, Range, Citations
 )
 from q2_types.sample_data import SampleData
 from q2_types.per_sample_sequences import (
@@ -23,6 +23,7 @@ from ._format import (EMPMultiplexedDirFmt, ErrorCorrectionDetailsDirFmt,
                       EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
                       EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
 
+citations = Citations.load('citations.bib', package='q2_demux')
 
 plugin = Plugin(
     name='demux',
@@ -100,7 +101,10 @@ plugin.methods.register_function(
                  'sample ids) for data generated with the Earth Microbiome '
                  'Project (EMP) amplicon sequencing protocol. Details about '
                  'this protocol can be found at '
-                 'http://www.earthmicrobiome.org/protocols-and-standards/')
+                 'http://www.earthmicrobiome.org/protocols-and-standards/'),
+    citations=[
+        citations['hamady2008'],
+        citations['hamady2009']]
 )
 
 plugin.methods.register_function(
@@ -139,7 +143,10 @@ plugin.methods.register_function(
                  'reads to sample ids) for data generated with the Earth '
                  'Microbiome Project (EMP) amplicon sequencing protocol. '
                  'Details about this protocol can be found at '
-                 'http://www.earthmicrobiome.org/protocols-and-standards/')
+                 'http://www.earthmicrobiome.org/protocols-and-standards/'),
+    citations=[
+        citations['hamady2008'],
+        citations['hamady2009']]
 )
 
 plugin.visualizers.register_function(
