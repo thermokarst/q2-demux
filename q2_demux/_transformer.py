@@ -118,34 +118,18 @@ def _7(dirfmt: EMPPairedEndDirFmt) -> BarcodeSequenceFastqIterator:
     return result
 
 
-_ec_details_column_dtypes = {
-    'sample-id': np.str,
-    'barcode-sequence-id': np.str,
-    'barcode-uncorrected': np.str,
-    'barcode-corrected': np.str,
-    'barcode-errors': np.number
-}
-
-
-def _ec_details_to_df(ff):
-    # https://github.com/pandas-dev/pandas/issues/9435
-    df = pd.read_csv(str(ff), dtype=_ec_details_column_dtypes)
-    df.set_index('sample-id', inplace=True)
-    return df
-
-
 @plugin.register_transformer
 def _8(data: pd.DataFrame) -> ErrorCorrectionDetailsFmt:
     ff = ErrorCorrectionDetailsFmt()
-    data.to_csv(str(ff))
+    data.to_csv(str(ff), sep='\t')
     return ff
 
 
 @plugin.register_transformer
 def _9(ff: ErrorCorrectionDetailsFmt) -> pd.DataFrame:
-    return _ec_details_to_df(ff)
+    return ff.ec_details_to_df()
 
 
 @plugin.register_transformer
 def _10(ff: ErrorCorrectionDetailsFmt) -> Metadata:
-    return Metadata(_ec_details_to_df(ff))
+    return Metadata(ff.ec_details_to_df())

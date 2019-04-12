@@ -60,15 +60,25 @@ class EMPPairedEndCasavaDirFmt(model.DirectoryFormat):
 
 
 class ErrorCorrectionDetailsFmt(model.TextFileFormat):
+    METADATA_COLUMNS = {
+        'sample-id': np.str,
+        'barcode-sequence-id': np.str,
+        'barcode-uncorrected': np.str,
+        'barcode-corrected': np.str,
+        'barcode-errors': np.number
+    }
+
+    def ec_details_to_df(self):
+        # https://github.com/pandas-dev/pandas/issues/9435
+        df = pd.read_csv(str(self), sep='\t', dtype=self.METADATA_COLUMNS)
+        df.set_index('sample-id', inplace=True)
+        return df
+
     def _validate_(self, level):
-        line = open(str(self)).readline()
-        hdr = line.strip().split(',')
-        expected = ['sample-id',
-                    'barcode-sequence-id',
-                    'barcode-uncorrected',
-                    'barcode-corrected',
-                    'barcode-errors']
-        return hdr == expected
+        with open(str(self)) as fp:
+            line = fp.readline()
+            hdr = line.strip().split(',')
+            return set(hdr) == set(self.METADATA_COLUMNS)
 
 
 ErrorCorrectionDetailsDirFmt = model.SingleFileDirectoryFormat(
