@@ -7,6 +7,7 @@
 # ----------------------------------------------------------------------------
 
 import numpy as np
+import pandas as pd
 
 from q2_types.per_sample_sequences import FastqGzFormat
 import qiime2.plugin.model as model
