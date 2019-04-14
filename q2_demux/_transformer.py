@@ -9,7 +9,6 @@
 import shutil
 
 import pandas as pd
-import numpy as np
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,

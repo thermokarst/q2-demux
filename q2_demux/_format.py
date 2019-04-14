@@ -6,6 +6,8 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
+import numpy as np
+
 from q2_types.per_sample_sequences import FastqGzFormat
 import qiime2.plugin.model as model
 
