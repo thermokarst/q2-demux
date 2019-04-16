@@ -7,10 +7,11 @@
 # ----------------------------------------------------------------------------
 
 import numpy as np
-import pandas as pd
 
 from q2_types.per_sample_sequences import FastqGzFormat
 import qiime2.plugin.model as model
+from qiime2.plugin import ValidationError
+import qiime2
 
 
 # TODO: deprecate this and alias it
@@ -64,25 +65,25 @@ class EMPPairedEndCasavaDirFmt(model.DirectoryFormat):
 
 class ErrorCorrectionDetailsFmt(model.TextFileFormat):
     METADATA_COLUMNS = {
-        'sample-id': np.str,
-        'barcode-sequence-id': np.str,
-        'barcode-uncorrected': np.str,
-        'barcode-corrected': np.str,
-        'barcode-errors': np.number
+        'sample',
+        'barcode-sequence-id',
+        'barcode-uncorrected',
+        'barcode-corrected',
+        'barcode-errors',
     }
 
-    def ec_details_to_df(self):
-        # https://github.com/pandas-dev/pandas/issues/9435
-        df = pd.read_csv(str(self), sep='\t', dtype=self.METADATA_COLUMNS)
-        df.set_index('sample-id', inplace=True)
-        return df
-
     def _validate_(self, level):
-        with open(str(self)) as fp:
-            line = fp.readline()
-            hdr = line.strip().split(',')
-            return set(hdr) == set(self.METADATA_COLUMNS)
+        try:
+            md = qiime2.Metadata.load(str(self))
+        except qiime2.metadata.MetadataFileError as md_exc:
+            raise ValidationError(md_exc) from md_exc
+
+        for column in self.METADATA_COLUMNS.keys():
+            try:
+                md.get_column(column)
+            except ValueError as md_exc:
+                raise ValidationError(md_exc) from md_exc
 
 
 ErrorCorrectionDetailsDirFmt = model.SingleFileDirectoryFormat(
-    'ErrorCorrectionDetailsDirFmt', 'details.csv', ErrorCorrectionDetailsFmt)
+    'ErrorCorrectionDetailsDirFmt', 'details.tsv', ErrorCorrectionDetailsFmt)

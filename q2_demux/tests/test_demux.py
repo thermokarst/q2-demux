@@ -338,11 +338,12 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                                     'ACGATGCGACCA', 1],
                                   ['sample5', '@s7/2 abc/2', 'CATTGTATCAAC',
                                    'CATCGTATCAAC', 1]],
-                                  columns=['sample-id', 'barcode-sequence-id',
+                                  columns=['sample', 'barcode-sequence-id',
                                            'barcode-uncorrected',
                                            'barcode-corrected',
-                                           'barcode-errors'])
-        exp_errors.set_index('sample-id', inplace=True)
+                                           'barcode-errors'],
+                                  index=pd.Index(['record-1', 'record-2'],
+                                                 name='id'))
         pdt.assert_frame_equal(error_detail, exp_errors)
 
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 3)
@@ -671,12 +672,13 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                                       ['sample5', '@s7/2 abc/2',
                                        'CATTGTATCAAC',
                                        'CATCGTATCAAC', 1]],
-                                      columns=['sample-id',
+                                      columns=['sample',
                                                'barcode-sequence-id',
                                                'barcode-uncorrected',
                                                'barcode-corrected',
-                                               'barcode-errors'])
-            exp_errors.set_index('sample-id', inplace=True)
+                                               'barcode-errors'],
+                                      index=pd.Index(['record-1', 'record-2'],
+                                                     name='id'))
             pdt.assert_frame_equal(ecc, exp_errors)
 
     def test_valid(self):

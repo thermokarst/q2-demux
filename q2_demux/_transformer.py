@@ -120,15 +120,15 @@ def _7(dirfmt: EMPPairedEndDirFmt) -> BarcodeSequenceFastqIterator:
 @plugin.register_transformer
 def _8(data: pd.DataFrame) -> ErrorCorrectionDetailsFmt:
     ff = ErrorCorrectionDetailsFmt()
-    data.to_csv(str(ff), sep='\t')
+    Metadata(data).save(str(ff))
     return ff
 
 
 @plugin.register_transformer
 def _9(ff: ErrorCorrectionDetailsFmt) -> pd.DataFrame:
-    return ff.ec_details_to_df()
+    return Metadata.load(str(ff)).to_dataframe()
 
 
 @plugin.register_transformer
 def _10(ff: ErrorCorrectionDetailsFmt) -> Metadata:
-    return Metadata(ff.ec_details_to_df())
+    return Metadata.load(str(ff))

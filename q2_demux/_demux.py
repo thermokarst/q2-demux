@@ -266,6 +266,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     per_sample_fastqs = {}
     ec_details = []
+    correction_count = 1
     for barcode_record, sequence_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
@@ -286,11 +287,13 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
             continue
 
         if ecc_errors:
-            ec_details.append((sample_id,
+            ec_details.append(('record-%d' % correction_count,
+                               sample_id,
                                barcode_record[0],
                                raw_barcode_read,
                                barcode_read,
                                ecc_errors))
+            correction_count = correction_count + 1
 
             # See Hamady and Knight 2009 Genome Research for the justification
             # of a three bit filter:
@@ -340,12 +343,13 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    columns = ['sample-id',
+    columns = ['id',
+               'sample',
                'barcode-sequence-id',
                'barcode-uncorrected',
                'barcode-corrected',
                'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns).set_index('sample-id')
+    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
 
     return result, details
 
@@ -371,6 +375,8 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     per_sample_fastqs = {}
     ec_details = []
+    correction_count = 1
+
     for barcode_record, forward_record, reverse_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
@@ -391,11 +397,13 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
             continue
 
         if ecc_errors:
-            ec_details.append((sample_id,
+            ec_details.append(('record-%d' % correction_count,
+                               sample_id,
                                barcode_record[0],
                                raw_barcode_read,
                                barcode_read,
                                ecc_errors))
+            correction_count = correction_count + 1
 
             # See Hamady and Knight 2009 Genome Research for the justification
             # of a three bit filter:
@@ -455,11 +463,12 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    columns = ['sample-id',
+    columns = ['id',
+               'sample',
                'barcode-sequence-id',
                'barcode-uncorrected',
                'barcode-corrected',
                'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns).set_index('sample-id')
+    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
 
     return result, details
