@@ -344,7 +344,9 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                                            'barcode-uncorrected',
                                            'barcode-corrected',
                                            'barcode-errors'],
-                                  index=pd.Index(['record-1', 'record-2'],
+                                  index=pd.Index(['record-1',
+                                                  'record-2',
+                                                  'record-3'],
                                                  name='id'))
         pdt.assert_frame_equal(error_detail, exp_errors)
 
@@ -689,7 +691,9 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                                                'barcode-uncorrected',
                                                'barcode-corrected',
                                                'barcode-errors'],
-                                      index=pd.Index(['record-1', 'record-2'],
+                                      index=pd.Index(['record-1',
+                                                      'record-2',
+                                                      'record-3'],
                                                      name='id'))
             pdt.assert_frame_equal(ecc, exp_errors)
 
