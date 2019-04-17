@@ -142,6 +142,11 @@ class GolayDecoder(object):
             If a 4 bit error is detected, the corrected barcode returned will
             be None.
         """
+        if len(seq) != 12:
+            raise ValueError("Golay decoding requires 12nt barcodes. The "
+                             "barcode attempting to be decoded (%s) is of "
+                             "length %dnt." % (seq, len(seq)))
+
         if not set(seq).issubset({'A', 'T', 'G', 'C'}):
             return None, 4
 

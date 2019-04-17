@@ -65,6 +65,11 @@ class ECCTests(unittest.TestCase):
             err_bc = 'C' + bc[1:]
             self.assertEqual(golay.decode(err_bc), (bc, 2))
 
+    def test_decode_length_check(self):
+        """ decode should raise if a non 12nt sequence is provided"""
+        with self.assertRaisesRegex(ValueError, "length 8nt.$"):
+            golay.decode('ACGGTGAG')
+
     def test_G_H(self):
         """ generator and parity check matrices should be s.t. G dot H.T = zeros
         """
