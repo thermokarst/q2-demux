@@ -274,17 +274,19 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
         raw_barcode_read = barcode_read[:barcode_len]
 
         if golay_error_correction:
+            # A three bit filter is implicitly used by the decoder. See Hamady
+            # and Knight 2009 Genome Research for the justification:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
         else:
             barcode_read = raw_barcode_read
             ecc_errors = None
 
-        try:
-            sample_id = barcode_map[barcode_read]
-        except KeyError:
-            # TODO: this should ultimately be logged, but we don't currently
-            # have support for that.
-            continue
+        sample_id = barcode_map.get(barcode_read)
 
         if ecc_errors:
             ec_details.append(('record-%d' % correction_count,
@@ -295,15 +297,8 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                                ecc_errors))
             correction_count = correction_count + 1
 
-            # See Hamady and Knight 2009 Genome Research for the justification
-            # of a three bit filter:
-            #
-            # https://genome.cshlp.org/content/19/7/1141.full
-            #
-            # Specifically that "...Golay codes of 12 bases can correct all
-            # triple-bit errors and detect all quadruple-bit errors."
-            if ecc_errors > 3:
-                continue
+        if sample_id is None:
+            continue
 
         if sample_id not in per_sample_fastqs:
             # The barcode id, lane number and read number are not relevant
@@ -384,17 +379,19 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         raw_barcode_read = barcode_read[:barcode_len]
 
         if golay_error_correction:
+            # A three bit filter is implicitly used by the decoder. See Hamady
+            # and Knight 2009 Genome Research for the justification:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
         else:
             barcode_read = raw_barcode_read
             ecc_errors = None
 
-        try:
-            sample_id = barcode_map[barcode_read]
-        except KeyError:
-            # TODO: this should ultimately be logged, but we don't currently
-            # have support for that.
-            continue
+        sample_id = barcode_map.get(barcode_read)
 
         if ecc_errors:
             ec_details.append(('record-%d' % correction_count,
@@ -405,15 +402,8 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                                ecc_errors))
             correction_count = correction_count + 1
 
-            # See Hamady and Knight 2009 Genome Research for the justification
-            # of a three bit filter:
-            #
-            # https://genome.cshlp.org/content/19/7/1141.full
-            #
-            # Specifically that "...Golay codes of 12 bases can correct all
-            # triple-bit errors and detect all quadruple-bit errors."
-            if ecc_errors > 3:
-                continue
+        if sample_id is None:
+            continue
 
         if sample_id not in per_sample_fastqs:
             barcode_id = len(per_sample_fastqs) + 1

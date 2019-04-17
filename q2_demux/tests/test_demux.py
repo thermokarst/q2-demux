@@ -223,7 +223,7 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                          ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
                          # CATTGTATCAAC -> CATCGTATCAAC
                          ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
-                         ('@s8/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGGGG', '+', 'PPPPPPPPPPPP'),
                          ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
                          ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
                          ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
@@ -318,7 +318,7 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
 
         # sequences in sample4 are correct
         self._validate_sample_fastq(
-            output_fastq[3][1].open(), self.sequences, [7, 10])
+            output_fastq[3][1].open(), self.sequences, [10])
 
         # sequences in sample5 are correct
         self._validate_sample_fastq(
@@ -337,8 +337,10 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
         exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2', 'ATGATGCGACCA',
                                     'ACGATGCGACCA', 1],
                                   ['sample5', '@s7/2 abc/2', 'CATTGTATCAAC',
-                                   'CATCGTATCAAC', 1]],
-                                  columns=['sample', 'barcode-sequence-id',
+                                   'CATCGTATCAAC', 1],
+                                   [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
+                                    None, 4]],
+                                  columns=['sample-id', 'barcode-sequence-id',
                                            'barcode-uncorrected',
                                            'barcode-corrected',
                                            'barcode-errors'],
@@ -540,7 +542,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                          ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
                          # CATTGTATCAAC -> CATCGTATCAAC
                          ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
-                         ('@s8/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGGGG', '+', 'PPPPPPPPPPPP'),
                          ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
                          ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
                          ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
@@ -621,8 +623,12 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
             forward_fastq[2].open(), self.forward, [1, 3])
 
         # sequences in sample4 are correct
-        self._validate_sample_fastq(
-            forward_fastq[3].open(), self.forward, [7, 10])
+        if kwargs['golay_error_correction']:
+            self._validate_sample_fastq(
+                forward_fastq[3].open(), self.forward, [10, ])
+        else:
+            self._validate_sample_fastq(
+                forward_fastq[3].open(), self.forward, [7, 10])
 
         # sequences in sample5 are correct
         self._validate_sample_fastq(
@@ -642,8 +648,12 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
             reverse_fastq[2].open(), self.reverse, [1, 3])
 
         # sequences in sample4 are correct
-        self._validate_sample_fastq(
-            reverse_fastq[3].open(), self.reverse, [7, 10])
+        if kwargs['golay_error_correction']:
+            self._validate_sample_fastq(
+                reverse_fastq[3].open(), self.reverse, [10, ])
+        else:
+            self._validate_sample_fastq(
+                reverse_fastq[3].open(), self.reverse, [7, 10])
 
         # sequences in sample5 are correct
         self._validate_sample_fastq(
@@ -671,8 +681,10 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                                         'ACGATGCGACCA', 1],
                                       ['sample5', '@s7/2 abc/2',
                                        'CATTGTATCAAC',
-                                       'CATCGTATCAAC', 1]],
-                                      columns=['sample',
+                                       'CATCGTATCAAC', 1],
+                                      [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
+                                       None, 4]],
+                                      columns=['sample-id',
                                                'barcode-sequence-id',
                                                'barcode-uncorrected',
                                                'barcode-corrected',
