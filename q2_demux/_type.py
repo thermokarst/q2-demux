@@ -14,3 +14,5 @@ RawSequences = SemanticType('RawSequences')
 EMPSingleEndSequences = SemanticType('EMPSingleEndSequences')
 
 EMPPairedEndSequences = SemanticType('EMPPairedEndSequences')
+
+ErrorCorrectionDetails = SemanticType('ErrorCorrectionDetails')

@@ -8,17 +8,20 @@
 
 import shutil
 
+import pandas as pd
 from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqGzFormat)
+from qiime2 import Metadata
 
 from .plugin_setup import plugin
 from ._demux import (BarcodeSequenceFastqIterator,
                      BarcodePairedSequenceFastqIterator, _read_fastq_seqs)
 from ._format import (EMPMultiplexedDirFmt,
                       EMPSingleEndDirFmt, EMPSingleEndCasavaDirFmt,
-                      EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt)
+                      EMPPairedEndDirFmt, EMPPairedEndCasavaDirFmt,
+                      ErrorCorrectionDetailsFmt)
 from ._summarize import _PlotQualView
 
 
@@ -112,3 +115,20 @@ def _7(dirfmt: EMPPairedEndDirFmt) -> BarcodeSequenceFastqIterator:
     # generators will work.
     result.__dirfmt = dirfmt
     return result
+
+
+@plugin.register_transformer
+def _8(data: pd.DataFrame) -> ErrorCorrectionDetailsFmt:
+    ff = ErrorCorrectionDetailsFmt()
+    Metadata(data).save(str(ff))
+    return ff
+
+
+@plugin.register_transformer
+def _9(ff: ErrorCorrectionDetailsFmt) -> pd.DataFrame:
+    return Metadata.load(str(ff)).to_dataframe()
+
+
+@plugin.register_transformer
+def _10(ff: ErrorCorrectionDetailsFmt) -> Metadata:
+    return Metadata.load(str(ff))

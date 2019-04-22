@@ -8,6 +8,8 @@
 
 from q2_types.per_sample_sequences import FastqGzFormat
 import qiime2.plugin.model as model
+from qiime2.plugin import ValidationError
+import qiime2
 
 
 # TODO: deprecate this and alias it
@@ -57,3 +59,29 @@ class EMPPairedEndCasavaDirFmt(model.DirectoryFormat):
 
     barcodes = model.File(
         r'Undetermined_S0_L001_I1_001.fastq.gz', format=FastqGzFormat)
+
+
+class ErrorCorrectionDetailsFmt(model.TextFileFormat):
+    METADATA_COLUMNS = {
+        'sample',
+        'barcode-sequence-id',
+        'barcode-uncorrected',
+        'barcode-corrected',
+        'barcode-errors',
+    }
+
+    def _validate_(self, level):
+        try:
+            md = qiime2.Metadata.load(str(self))
+        except qiime2.metadata.MetadataFileError as md_exc:
+            raise ValidationError(md_exc) from md_exc
+
+        for column in sorted(self.METADATA_COLUMNS):
+            try:
+                md.get_column(column)
+            except ValueError as md_exc:
+                raise ValidationError(md_exc) from md_exc
+
+
+ErrorCorrectionDetailsDirFmt = model.SingleFileDirectoryFormat(
+    'ErrorCorrectionDetailsDirFmt', 'details.tsv', ErrorCorrectionDetailsFmt)

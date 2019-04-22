@@ -15,6 +15,7 @@ import shutil
 import random
 
 import pandas as pd
+import pandas.testing as pdt
 import skbio
 import qiime2
 import numpy as np
@@ -213,6 +214,20 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                     ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                     ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
+        golaybarcodes = [  # ATGATGCGACCA -> ACGATGCGACCA
+                         ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
+                         ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s4/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s5/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
+                         # CATTGTATCAAC -> CATCGTATCAAC
+                         ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGGGG', '+', 'PPPPPPPPPPPP'),
+                         ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
+
         self.sequences = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
                           ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                           ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
@@ -225,7 +240,6 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                           ('@s10/1 abc/1', 'GCA', '+', 'PPP'),
                           ('@s11/1 abc/1', 'TGA', '+', 'PPP')]
         self.bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
-
         barcode_map = pd.Series(
             ['AAAA', 'AACC', 'TTAA', 'GGAA', 'CGGC'], name='bc',
             index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
@@ -233,8 +247,21 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
         )
         self.barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
+        self.bsi_werr = BarcodeSequenceFastqIterator(golaybarcodes,
+                                                     self.sequences)
+
+        golay_barcode_map = pd.Series(
+            ['ACGATGCGACCA', 'ACACACTATGGC', 'AGCTATCCACGA',
+             'CTAACGCAGTCA', 'CATCGTATCAAC'], name='bc',
+            index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
+                            'sample5'], name='id')
+        )
+        self.golay_barcode_map = qiime2.CategoricalMetadataColumn(
+            golay_barcode_map)
+
     def test_valid(self):
-        actual = emp_single(self.bsi, self.barcode_map)
+        actual, error_detail = emp_single(self.bsi, self.barcode_map,
+                                          golay_error_correction=False)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # five per-sample files were written
         self.assertEqual(len(output_fastq), 5)
@@ -269,6 +296,60 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                         'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
         self._compare_manifests(act_manifest, exp_manifest)
 
+    def test_valid_with_barcode_errors(self):
+        actual, error_detail = emp_single(self.bsi_werr,
+                                          self.golay_barcode_map,
+                                          golay_error_correction=True)
+        output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
+        # five per-sample files were written
+        self.assertEqual(len(output_fastq), 5)
+
+        # sequences in sample1 are correct
+        self._validate_sample_fastq(
+            output_fastq[0][1].open(), self.sequences, [0, 5])
+
+        # sequences in sample2 are correct
+        self._validate_sample_fastq(
+            output_fastq[1][1].open(), self.sequences, [2, 4])
+
+        # sequences in sample3 are correct
+        self._validate_sample_fastq(
+            output_fastq[2][1].open(), self.sequences, [1, 3])
+
+        # sequences in sample4 are correct
+        self._validate_sample_fastq(
+            output_fastq[3][1].open(), self.sequences, [10])
+
+        # sequences in sample5 are correct
+        self._validate_sample_fastq(
+            output_fastq[4][1].open(), self.sequences, [6, 8, 9])
+
+        # manifest is correct
+        act_manifest = list(actual.manifest.view(FastqManifestFormat).open())
+        exp_manifest = ['sample-id,filename,direction\n',
+                        'sample1,sample1_1_L001_R1_001.fastq.gz,forward\n',
+                        'sample3,sample3_2_L001_R1_001.fastq.gz,forward\n',
+                        'sample2,sample2_3_L001_R1_001.fastq.gz,forward\n',
+                        'sample5,sample5_4_L001_R1_001.fastq.gz,forward\n',
+                        'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
+        self._compare_manifests(act_manifest, exp_manifest)
+
+        exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2', 'ATGATGCGACCA',
+                                    'ACGATGCGACCA', 1],
+                                  ['sample5', '@s7/2 abc/2', 'CATTGTATCAAC',
+                                   'CATCGTATCAAC', 1],
+                                   [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
+                                    None, 4]],
+                                  columns=['sample', 'barcode-sequence-id',
+                                           'barcode-uncorrected',
+                                           'barcode-corrected',
+                                           'barcode-errors'],
+                                  index=pd.Index(['record-1',
+                                                  'record-2',
+                                                  'record-3'],
+                                                 name='id'))
+        pdt.assert_frame_equal(error_detail, exp_errors)
+
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 3)
     def test_valid_small_open_fh_limit(self):
         self.test_valid()
@@ -278,21 +359,21 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                              index=pd.Index(['sample1', 'sample2'], name='id'))
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_single(self.bsi, barcodes)
+            emp_single(self.bsi, barcodes, golay_error_correction=False)
 
     def test_duplicate_barcodes(self):
         barcodes = pd.Series(['AACC', 'AACC'], name='bc',
                              index=pd.Index(['sample1', 'sample2'], name='id'))
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_single(self.bsi, barcodes)
+            emp_single(self.bsi, barcodes, golay_error_correction=False)
 
     def test_no_matched_barcodes(self):
         barcodes = pd.Series(['CCCC', 'GGCC'], name='bc',
                              index=pd.Index(['sample1', 'sample2'], name='id'))
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_single(self.bsi, barcodes)
+            emp_single(self.bsi, barcodes, golay_error_correction=False)
 
     def test_rev_comp_mapping_barcodes(self):
         barcodes = pd.Series(
@@ -301,7 +382,9 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                             'sample5'], name='id')
         )
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
-        actual = emp_single(self.bsi, barcodes, rev_comp_mapping_barcodes=True)
+        actual, ecc = emp_single(self.bsi, barcodes,
+                                 rev_comp_mapping_barcodes=True,
+                                 golay_error_correction=False)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # five per-sample files were written
         self.assertEqual(len(output_fastq), 5)
@@ -349,7 +432,9 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                     ('@s10/2 abc/2', 'GCCG', '+', 'PPPP'),
                     ('@s11/2 abc/2', 'TTCC', '+', 'PPPP')]
         bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
-        actual = emp_single(bsi, self.barcode_map, rev_comp_barcodes=True)
+        actual, ecc = emp_single(bsi, self.barcode_map,
+                                 golay_error_correction=False,
+                                 rev_comp_barcodes=True)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # five per-sample files were written
         self.assertEqual(len(output_fastq), 5)
@@ -399,7 +484,8 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                     ('@s10/2 abc/2', 'CGGCG', '+', 'PPPP'),
                     ('@s11/2 abc/2', 'GGAAG', '+', 'PPPP')]
         bsi = BarcodeSequenceFastqIterator(barcodes, self.sequences)
-        actual = emp_single(bsi, self.barcode_map)
+        actual, ecc = emp_single(bsi, self.barcode_map,
+                                 golay_error_correction=False)
         output_fastq = list(actual.sequences.iter_views(FastqGzFormat))
         # five per-sample files were written
         self.assertEqual(len(output_fastq), 5)
@@ -449,6 +535,20 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                          ('@s10/2 abc/2', 'CGGC', '+', 'PPPP'),
                          ('@s11/2 abc/2', 'GGAA', '+', 'PPPP')]
 
+        golaybarcodes = [  # ATGATGCGACCA -> ACGATGCGACCA
+                         ('@s1/2 abc/2', 'ATGATGCGACCA', '+', 'YYYYYYYYYYYY'),
+                         ('@s2/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s3/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s4/2 abc/2', 'AGCTATCCACGA', '+', 'PPPPPPPPPPPP'),
+                         ('@s5/2 abc/2', 'ACACACTATGGC', '+', 'PPPPPPPPPPPP'),
+                         ('@s6/2 abc/2', 'ACGATGCGACCA', '+', 'PPPPPPPPPPPP'),
+                         # CATTGTATCAAC -> CATCGTATCAAC
+                         ('@s7/2 abc/2', 'CATTGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s8/2 abc/2', 'CTAACGCAGGGG', '+', 'PPPPPPPPPPPP'),
+                         ('@s9/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s10/2 abc/2', 'CATCGTATCAAC', '+', 'PPPPPPPPPPPP'),
+                         ('@s11/2 abc/2', 'CTAACGCAGTCA', '+', 'PPPPPPPPPPPP')]
+
         self.forward = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
                         ('@s2/1 abc/1', 'CCC', '+', 'PPP'),
                         ('@s3/1 abc/1', 'AAA', '+', 'PPP'),
@@ -483,8 +583,21 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         )
         self.barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
+        self.bpsi_werr = BarcodePairedSequenceFastqIterator(golaybarcodes,
+                                                            self.forward,
+                                                            self.reverse)
+
+        golay_barcode_map = pd.Series(
+            ['ACGATGCGACCA', 'ACACACTATGGC', 'AGCTATCCACGA',
+             'CTAACGCAGTCA', 'CATCGTATCAAC'], name='bc',
+            index=pd.Index(['sample1', 'sample2', 'sample3', 'sample4',
+                            'sample5'], name='id')
+        )
+        self.golay_barcode_map = qiime2.CategoricalMetadataColumn(
+            golay_barcode_map)
+
     def check_valid(self, *args, **kwargs):
-        actual = emp_paired(*args, **kwargs)
+        actual, ecc = emp_paired(*args, **kwargs)
 
         # five forward sample files
         forward_fastq = [
@@ -512,8 +625,12 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
             forward_fastq[2].open(), self.forward, [1, 3])
 
         # sequences in sample4 are correct
-        self._validate_sample_fastq(
-            forward_fastq[3].open(), self.forward, [7, 10])
+        if kwargs['golay_error_correction']:
+            self._validate_sample_fastq(
+                forward_fastq[3].open(), self.forward, [10, ])
+        else:
+            self._validate_sample_fastq(
+                forward_fastq[3].open(), self.forward, [7, 10])
 
         # sequences in sample5 are correct
         self._validate_sample_fastq(
@@ -533,8 +650,12 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
             reverse_fastq[2].open(), self.reverse, [1, 3])
 
         # sequences in sample4 are correct
-        self._validate_sample_fastq(
-            reverse_fastq[3].open(), self.reverse, [7, 10])
+        if kwargs['golay_error_correction']:
+            self._validate_sample_fastq(
+                reverse_fastq[3].open(), self.reverse, [10, ])
+        else:
+            self._validate_sample_fastq(
+                reverse_fastq[3].open(), self.reverse, [7, 10])
 
         # sequences in sample5 are correct
         self._validate_sample_fastq(
@@ -556,8 +677,33 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
 
         self._compare_manifests(act_manifest, exp_manifest)
 
+        if kwargs['golay_error_correction']:
+            exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2',
+                                        'ATGATGCGACCA',
+                                        'ACGATGCGACCA', 1],
+                                      ['sample5', '@s7/2 abc/2',
+                                       'CATTGTATCAAC',
+                                       'CATCGTATCAAC', 1],
+                                      [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
+                                       None, 4]],
+                                      columns=['sample',
+                                               'barcode-sequence-id',
+                                               'barcode-uncorrected',
+                                               'barcode-corrected',
+                                               'barcode-errors'],
+                                      index=pd.Index(['record-1',
+                                                      'record-2',
+                                                      'record-3'],
+                                                     name='id'))
+            pdt.assert_frame_equal(ecc, exp_errors)
+
     def test_valid(self):
-        self.check_valid(self.bpsi, self.barcode_map)
+        self.check_valid(self.bpsi, self.barcode_map,
+                         golay_error_correction=False)
+
+    def test_valid_with_barcode_errors(self):
+        self.check_valid(self.bpsi_werr, self.golay_barcode_map,
+                         golay_error_correction=True)
 
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 6)
     def test_valid_small_open_fh_limit(self):
@@ -570,7 +716,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         )
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_paired(self.bpsi, barcodes)
+            emp_paired(self.bpsi, barcodes, golay_error_correction=False)
 
     def test_duplicate_barcodes(self):
         barcodes = pd.Series(
@@ -579,7 +725,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         )
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_paired(self.bpsi, barcodes)
+            emp_paired(self.bpsi, barcodes, golay_error_correction=False)
 
     def test_no_matched_barcodes(self):
         barcodes = pd.Series(
@@ -588,7 +734,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         )
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
         with self.assertRaises(ValueError):
-            emp_paired(self.bpsi, barcodes)
+            emp_paired(self.bpsi, barcodes, golay_error_correction=False)
 
     def test_rev_comp_mapping_barcodes(self):
         barcodes = pd.Series(
@@ -597,7 +743,8 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                             'sample5'], name='id')
         )
         barcodes = qiime2.CategoricalMetadataColumn(barcodes)
-        self.check_valid(self.bpsi, barcodes, rev_comp_mapping_barcodes=True)
+        self.check_valid(self.bpsi, barcodes, rev_comp_mapping_barcodes=True,
+                         golay_error_correction=False)
 
     def test_rev_comp_barcodes(self):
         barcodes = [('@s1/2 abc/2', 'TTTT', '+', 'YYYY'),
@@ -613,7 +760,8 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                     ('@s11/2 abc/2', 'TTCC', '+', 'PPPP')]
         bpsi = BarcodePairedSequenceFastqIterator(
             barcodes, self.forward, self.reverse)
-        self.check_valid(bpsi, self.barcode_map, rev_comp_barcodes=True)
+        self.check_valid(bpsi, self.barcode_map, rev_comp_barcodes=True,
+                         golay_error_correction=False)
 
     def test_barcode_trimming(self):
         # these barcodes are longer then the ones in the mapping file, so
@@ -631,7 +779,7 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                     ('@s11/2 abc/2', 'GGAAG', '+', 'PPPP')]
         bpsi = BarcodePairedSequenceFastqIterator(
             barcodes, self.forward, self.reverse)
-        self.check_valid(bpsi, self.barcode_map)
+        self.check_valid(bpsi, self.barcode_map, golay_error_correction=False)
 
 
 class SummarizeTests(TestPluginBase):
@@ -658,7 +806,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         # test that an index.html file is created and that it has size > 0
         with tempfile.TemporaryDirectory() as output_dir:
             # TODO: Remove _PlotQualView wrapper
@@ -699,7 +848,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         # test that an index.html file is created and that it has size > 0
         with tempfile.TemporaryDirectory() as output_dir:
             # TODO: Remove _PlotQualView wrapper
@@ -776,7 +926,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_paired(bpsi, barcode_map)
+        demux_data, ecc = emp_paired(bpsi, barcode_map,
+                                     golay_error_correction=False)
         with tempfile.TemporaryDirectory() as output_dir:
             result = summarize(output_dir, _PlotQualView(demux_data,
                                                          paired=True), n=2)
@@ -807,7 +958,8 @@ class SummarizeTests(TestPluginBase):
                                 index=pd.Index(['sample1'], name='id'))
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         with tempfile.TemporaryDirectory() as output_dir:
             result = summarize(output_dir, _PlotQualView(demux_data,
                                                          paired=False), n=50)
@@ -831,7 +983,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         with tempfile.TemporaryDirectory() as output_dir:
             result = summarize(output_dir, _PlotQualView(demux_data,
                                                          paired=False), n=50)
@@ -854,7 +1007,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         lengths = [1, 3, 5, 7]
         for n in range(1, 6):
             with tempfile.TemporaryDirectory() as output_dir:
@@ -891,7 +1045,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_paired(bpsi, barcode_map)
+        demux_data, ecc = emp_paired(bpsi, barcode_map,
+                                     golay_error_correction=False)
         lengths = [1, 3, 5, 7]
         for n in range(1, 6):
             with tempfile.TemporaryDirectory() as output_dir:
@@ -925,7 +1080,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_single(bsi, barcode_map)
+        demux_data, ecc = emp_single(bsi, barcode_map,
+                                     golay_error_correction=False)
         with tempfile.TemporaryDirectory() as output_dir:
             summarize(output_dir, _PlotQualView(demux_data, paired=False), n=2)
             plot_fp = os.path.join(output_dir, 'data.jsonp')
@@ -957,7 +1113,8 @@ class SummarizeTests(TestPluginBase):
         )
         barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
 
-        demux_data = emp_paired(bpsi, barcode_map)
+        demux_data, ecc = emp_paired(bpsi, barcode_map,
+                                     golay_error_correction=False)
         with tempfile.TemporaryDirectory() as output_dir:
             summarize(output_dir, _PlotQualView(demux_data, paired=True), n=2)
             plot_fp = os.path.join(output_dir, 'data.jsonp')

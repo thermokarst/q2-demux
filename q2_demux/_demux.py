@@ -13,6 +13,7 @@ import collections
 import collections.abc
 import random
 import resource
+import pandas as pd
 
 import skbio
 import psutil
@@ -22,6 +23,7 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSampleSingleEndFastqDirFmt,
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqManifestFormat, YamlFormat)
+from ._ecc import GolayDecoder
 
 
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
@@ -242,13 +244,18 @@ def _write_metadata_yaml(dir_fmt):
 
 def emp_single(seqs: BarcodeSequenceFastqIterator,
                barcodes: qiime2.CategoricalMetadataColumn,
+               golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
-               ) -> SingleLanePerSampleSingleEndFastqDirFmt:
+               ) -> (SingleLanePerSampleSingleEndFastqDirFmt,
+                     pd.DataFrame):
 
     result = SingleLanePerSampleSingleEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
         barcodes, rev_comp_mapping_barcodes)
+
+    if golay_error_correction:
+        decoder = GolayDecoder()
 
     manifest = FastqManifestFormat()
     manifest_fh = manifest.open()
@@ -258,18 +265,39 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
     manifest_fh.write('# joined reads\n')
 
     per_sample_fastqs = {}
-
+    ec_details = []
+    correction_count = 1
     for barcode_record, sequence_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
-        barcode_read = barcode_read[:barcode_len]
+        raw_barcode_read = barcode_read[:barcode_len]
 
-        try:
-            sample_id = barcode_map[barcode_read]
-        except KeyError:
-            # TODO: this should ultimately be logged, but we don't currently
-            # have support for that.
+        if golay_error_correction:
+            # A three bit filter is implicitly used by the decoder. See Hamady
+            # and Knight 2009 Genome Research for the justification:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
+            barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+        else:
+            barcode_read = raw_barcode_read
+            ecc_errors = None
+
+        sample_id = barcode_map.get(barcode_read)
+
+        if ecc_errors:
+            ec_details.append(('record-%d' % correction_count,
+                               sample_id,
+                               barcode_record[0],
+                               raw_barcode_read,
+                               barcode_read,
+                               ecc_errors))
+            correction_count = correction_count + 1
+
+        if sample_id is None:
             continue
 
         if sample_id not in per_sample_fastqs:
@@ -310,35 +338,71 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    return result
+    columns = ['id',
+               'sample',
+               'barcode-sequence-id',
+               'barcode-uncorrected',
+               'barcode-corrected',
+               'barcode-errors']
+    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
+
+    return result, details
 
 
 def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                barcodes: qiime2.CategoricalMetadataColumn,
+               golay_error_correction: bool = True,
                rev_comp_barcodes: bool = False,
                rev_comp_mapping_barcodes: bool = False
-               ) -> SingleLanePerSamplePairedEndFastqDirFmt:
+               ) -> (SingleLanePerSamplePairedEndFastqDirFmt,
+                     pd.DataFrame):
 
     result = SingleLanePerSamplePairedEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
         barcodes, rev_comp_mapping_barcodes)
+
+    if golay_error_correction:
+        decoder = GolayDecoder()
 
     manifest = FastqManifestFormat()
     manifest_fh = manifest.open()
     manifest_fh.write('sample-id,filename,direction\n')
 
     per_sample_fastqs = {}
+    ec_details = []
+    correction_count = 1
+
     for barcode_record, forward_record, reverse_record in seqs:
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
-        barcode_read = barcode_read[:barcode_len]
+        raw_barcode_read = barcode_read[:barcode_len]
 
-        try:
-            sample_id = barcode_map[barcode_read]
-        except KeyError:
-            # TODO: this should ultimately be logged, but we don't currently
-            # have support for that.
+        if golay_error_correction:
+            # A three bit filter is implicitly used by the decoder. See Hamady
+            # and Knight 2009 Genome Research for the justification:
+            #
+            # https://genome.cshlp.org/content/19/7/1141.full
+            #
+            # Specifically that "...Golay codes of 12 bases can correct all
+            # triple-bit errors and detect all quadruple-bit errors."
+            barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+        else:
+            barcode_read = raw_barcode_read
+            ecc_errors = None
+
+        sample_id = barcode_map.get(barcode_read)
+
+        if ecc_errors:
+            ec_details.append(('record-%d' % correction_count,
+                               sample_id,
+                               barcode_record[0],
+                               raw_barcode_read,
+                               barcode_read,
+                               ecc_errors))
+            correction_count = correction_count + 1
+
+        if sample_id is None:
             continue
 
         if sample_id not in per_sample_fastqs:
@@ -389,4 +453,12 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    return result
+    columns = ['id',
+               'sample',
+               'barcode-sequence-id',
+               'barcode-uncorrected',
+               'barcode-corrected',
+               'barcode-errors']
+    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
+
+    return result, details
