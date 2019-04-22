@@ -35,7 +35,8 @@ setup(
                            'data/subsample_paired_end/*',
                            ],
         'q2_demux': ['_summarize/assets/*.html',
-                     '_summarize/assets/dist/*']
+                     '_summarize/assets/dist/*',
+                     'citations.bib'],
     },
     zip_safe=False,
 )
