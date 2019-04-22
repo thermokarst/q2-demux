@@ -29,6 +29,7 @@ setup(
         'q2_demux.tests': ['data/bad/*',
                            'data/emp_multiplexed/*',
                            'data/emp_multiplexed_single_end/*',
+                           'data/error_correction_details/*',
                            'data/single_sample_multiple_files/*',
                            'data/subsample_single_end/*',
                            'data/subsample_paired_end/*',

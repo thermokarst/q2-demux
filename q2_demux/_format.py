@@ -76,7 +76,7 @@ class ErrorCorrectionDetailsFmt(model.TextFileFormat):
         except qiime2.metadata.MetadataFileError as md_exc:
             raise ValidationError(md_exc) from md_exc
 
-        for column in self.METADATA_COLUMNS.keys():
+        for column in sorted(self.METADATA_COLUMNS):
             try:
                 md.get_column(column)
             except ValueError as md_exc:
