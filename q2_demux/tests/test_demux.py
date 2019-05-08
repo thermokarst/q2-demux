@@ -296,6 +296,29 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                         'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
         self._compare_manifests(act_manifest, exp_manifest)
 
+    def test_valid_ecc_no_golay(self):
+        _, ecc = emp_single(self.bsi, self.barcode_map,
+                            golay_error_correction=False)
+        exp_errors = pd.DataFrame([
+            ['sample1', '@s1/2 abc/2',  'AAAA', None, None],
+            ['sample3', '@s2/2 abc/2',  'TTAA', None, None],
+            ['sample2', '@s3/2 abc/2',  'AACC', None, None],
+            ['sample3', '@s4/2 abc/2',  'TTAA', None, None],
+            ['sample2', '@s5/2 abc/2',  'AACC', None, None],
+            ['sample1', '@s6/2 abc/2',  'AAAA', None, None],
+            ['sample5', '@s7/2 abc/2',  'CGGC', None, None],
+            ['sample4', '@s8/2 abc/2',  'GGAA', None, None],
+            ['sample5', '@s9/2 abc/2',  'CGGC', None, None],
+            ['sample5', '@s10/2 abc/2', 'CGGC', None, None],
+            ['sample4', '@s11/2 abc/2', 'GGAA', None, None]
+            ],
+            columns=['sample', 'barcode-sequence-id',
+                     'barcode-uncorrected', 'barcode-corrected',
+                     'barcode-errors'],
+            index=pd.Index(['record-%02d' % i for i in range(1, 12)],
+                           name='id'))
+        pdt.assert_frame_equal(ecc, exp_errors)
+
     def test_valid_with_barcode_errors(self):
         actual, error_detail = emp_single(self.bsi_werr,
                                           self.golay_barcode_map,
@@ -703,6 +726,28 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
     def test_valid(self):
         self.check_valid(self.bpsi, self.barcode_map,
                          golay_error_correction=False)
+
+    def test_valid_ecc_no_golay(self):
+        _, ecc = emp_paired(self.bpsi, self.barcode_map,
+                            golay_error_correction=False)
+        exp_errors = pd.DataFrame([
+            ['sample1', '@s1/2 abc/2',  'AAAA', None, None],
+            ['sample3', '@s2/2 abc/2',  'TTAA', None, None],
+            ['sample2', '@s3/2 abc/2',  'AACC', None, None],
+            ['sample3', '@s4/2 abc/2',  'TTAA', None, None],
+            ['sample2', '@s5/2 abc/2',  'AACC', None, None],
+            ['sample1', '@s6/2 abc/2',  'AAAA', None, None],
+            ['sample5', '@s7/2 abc/2',  'CGGC', None, None],
+            ['sample4', '@s8/2 abc/2',  'GGAA', None, None],
+            ['sample5', '@s9/2 abc/2',  'CGGC', None, None],
+            ['sample5', '@s10/2 abc/2', 'CGGC', None, None],
+            ['sample4', '@s11/2 abc/2', 'GGAA', None, None]
+            ],
+            columns=['sample', 'barcode-sequence-id',
+                     'barcode-uncorrected', 'barcode-corrected',
+                     'barcode-errors'],
+            index=pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], name='id'))
+        pdt.assert_frame_equal(ecc, exp_errors)
 
     def test_valid_with_barcode_errors(self):
         self.check_valid(self.bpsi_werr, self.golay_barcode_map,
