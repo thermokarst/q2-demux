@@ -465,8 +465,8 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                'barcode-corrected',
                'barcode-errors']
     details = pd.DataFrame(ec_details, columns=columns)
-    details['id'].apply(lambda x: 'record-%s' %
-                        str(x).zfill(len(barcode_count)))
+    details['id'] = details['id'].apply(lambda x: 'record-%s' %
+                                        str(x).zfill(len(barcode_count)))
     details = details.set_index('id')
 
     return result, details

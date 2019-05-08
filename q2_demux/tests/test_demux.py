@@ -720,7 +720,8 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
                 columns=['sample', 'barcode-sequence-id',
                          'barcode-uncorrected', 'barcode-corrected',
                          'barcode-errors'],
-                index=pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], name='id'))
+                index=pd.Index(['record-%02d' % i for i in range(1, 12)],
+                               name='id'))
             pdt.assert_frame_equal(ecc, exp_errors)
 
     def test_valid(self):
@@ -746,7 +747,8 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
             columns=['sample', 'barcode-sequence-id',
                      'barcode-uncorrected', 'barcode-corrected',
                      'barcode-errors'],
-            index=pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], name='id'))
+            index=pd.Index(['record-%02d' % i for i in range(1, 12)],
+                           name='id'))
         pdt.assert_frame_equal(ecc, exp_errors)
 
     def test_valid_with_barcode_errors(self):
