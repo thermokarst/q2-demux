@@ -333,21 +333,24 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
                         'sample5,sample5_4_L001_R1_001.fastq.gz,forward\n',
                         'sample4,sample4_5_L001_R1_001.fastq.gz,forward\n']
         self._compare_manifests(act_manifest, exp_manifest)
-
-        exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2', 'ATGATGCGACCA',
-                                    'ACGATGCGACCA', 1],
-                                  ['sample5', '@s7/2 abc/2', 'CATTGTATCAAC',
-                                   'CATCGTATCAAC', 1],
-                                   [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
-                                    None, 4]],
-                                  columns=['sample', 'barcode-sequence-id',
-                                           'barcode-uncorrected',
-                                           'barcode-corrected',
-                                           'barcode-errors'],
-                                  index=pd.Index(['record-1',
-                                                  'record-2',
-                                                  'record-3'],
-                                                 name='id'))
+        exp_errors = pd.DataFrame([
+            ['sample1', '@s1/2 abc/2',  'ATGATGCGACCA', 'ACGATGCGACCA', 1],
+            ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', None,        None],
+            ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', None,        None],
+            ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', None,        None],
+            ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', None,        None],
+            ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', None,        None],
+            ['sample5', '@s7/2 abc/2',  'CATTGTATCAAC', 'CATCGTATCAAC', 1],
+            [None,      '@s8/2 abc/2',  'CTAACGCAGGGG', None,           4],
+            ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', None,        None],
+            ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', None,        None],
+            ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', None,        None]
+            ],
+            columns=['sample', 'barcode-sequence-id',
+                     'barcode-uncorrected', 'barcode-corrected',
+                     'barcode-errors'],
+            index=pd.Index(['record-%02d' % i for i in range(1, 12)],
+                           name='id'))
         pdt.assert_frame_equal(error_detail, exp_errors)
 
     @mock.patch('q2_demux._demux.OPEN_FH_LIMIT', 3)
@@ -678,23 +681,23 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         self._compare_manifests(act_manifest, exp_manifest)
 
         if kwargs['golay_error_correction']:
-            exp_errors = pd.DataFrame([['sample1', '@s1/2 abc/2',
-                                        'ATGATGCGACCA',
-                                        'ACGATGCGACCA', 1],
-                                      ['sample5', '@s7/2 abc/2',
-                                       'CATTGTATCAAC',
-                                       'CATCGTATCAAC', 1],
-                                      [None, '@s8/2 abc/2', 'CTAACGCAGGGG',
-                                       None, 4]],
-                                      columns=['sample',
-                                               'barcode-sequence-id',
-                                               'barcode-uncorrected',
-                                               'barcode-corrected',
-                                               'barcode-errors'],
-                                      index=pd.Index(['record-1',
-                                                      'record-2',
-                                                      'record-3'],
-                                                     name='id'))
+            exp_errors = pd.DataFrame([
+                ['sample1', '@s1/2 abc/2',  'ATGATGCGACCA', 'ACGATGCGACCA', 1],
+                ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', None,        None],
+                ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', None,        None],
+                ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', None,        None],
+                ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', None,        None],
+                ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', None,        None],
+                ['sample5', '@s7/2 abc/2',  'CATTGTATCAAC', 'CATCGTATCAAC', 1],
+                [None,      '@s8/2 abc/2',  'CTAACGCAGGGG', None,           4],
+                ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', None,        None],
+                ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', None,        None],
+                ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', None,        None]
+                ],
+                columns=['sample', 'barcode-sequence-id',
+                         'barcode-uncorrected', 'barcode-corrected',
+                         'barcode-errors'],
+                index=pd.Index([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], name='id'))
             pdt.assert_frame_equal(ecc, exp_errors)
 
     def test_valid(self):
