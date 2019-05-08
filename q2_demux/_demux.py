@@ -282,9 +282,10 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
             # Specifically that "...Golay codes of 12 bases can correct all
             # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+            golay_stats = [barcode_read, ecc_errors]
         else:
             barcode_read = raw_barcode_read
-            ecc_errors = None
+            golay_stats = [None, None]
 
         sample_id = barcode_map.get(barcode_read)
 
@@ -294,7 +295,6 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
             barcode_record[0],
             raw_barcode_read,
         ]
-        golay_stats = [barcode_read, ecc_errors] if ecc_errors else [None] * 2
         ec_details.append(record + golay_stats)
 
         if sample_id is None:
@@ -391,9 +391,10 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
             # Specifically that "...Golay codes of 12 bases can correct all
             # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+            golay_stats = [barcode_read, ecc_errors]
         else:
             barcode_read = raw_barcode_read
-            ecc_errors = None
+            golay_stats = [None, None]
 
         sample_id = barcode_map.get(barcode_read)
 
@@ -403,7 +404,6 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
             barcode_record[0],
             raw_barcode_read,
         ]
-        golay_stats = [barcode_read, ecc_errors] if ecc_errors else [None] * 2
         ec_details.append(record + golay_stats)
 
         if sample_id is None:
@@ -441,7 +441,7 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         fwd, rev = per_sample_fastqs[sample_id]
         fwd.write(('\n'.join(forward_record) + '\n').encode('utf-8'))
         rev.write(('\n'.join(reverse_record) + '\n').encode('utf-8'))
-    barcode_count = str(i)  # last value her should be or largest record no.
+    barcode_count = str(i)  # last value here should be our largest record no.
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No sequences were mapped to samples. Check that '

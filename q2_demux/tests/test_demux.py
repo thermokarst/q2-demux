@@ -335,16 +335,16 @@ class EmpSingleTests(unittest.TestCase, EmpTestingUtils):
         self._compare_manifests(act_manifest, exp_manifest)
         exp_errors = pd.DataFrame([
             ['sample1', '@s1/2 abc/2',  'ATGATGCGACCA', 'ACGATGCGACCA', 1],
-            ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', None,        None],
-            ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', None,        None],
-            ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', None,        None],
-            ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', None,        None],
-            ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', None,        None],
+            ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', 'AGCTATCCACGA', 0],
+            ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', 'ACACACTATGGC', 0],
+            ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', 'AGCTATCCACGA', 0],
+            ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', 'ACACACTATGGC', 0],
+            ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', 'ACGATGCGACCA', 0],
             ['sample5', '@s7/2 abc/2',  'CATTGTATCAAC', 'CATCGTATCAAC', 1],
             [None,      '@s8/2 abc/2',  'CTAACGCAGGGG', None,           4],
-            ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', None,        None],
-            ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', None,        None],
-            ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', None,        None]
+            ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', 'CATCGTATCAAC', 0],
+            ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', 'CATCGTATCAAC', 0],
+            ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', 'CTAACGCAGTCA', 0]
             ],
             columns=['sample', 'barcode-sequence-id',
                      'barcode-uncorrected', 'barcode-corrected',
@@ -683,16 +683,16 @@ class EmpPairedTests(unittest.TestCase, EmpTestingUtils):
         if kwargs['golay_error_correction']:
             exp_errors = pd.DataFrame([
                 ['sample1', '@s1/2 abc/2',  'ATGATGCGACCA', 'ACGATGCGACCA', 1],
-                ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', None,        None],
-                ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', None,        None],
-                ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', None,        None],
-                ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', None,        None],
-                ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', None,        None],
+                ['sample3', '@s2/2 abc/2',  'AGCTATCCACGA', 'AGCTATCCACGA', 0],
+                ['sample2', '@s3/2 abc/2',  'ACACACTATGGC', 'ACACACTATGGC', 0],
+                ['sample3', '@s4/2 abc/2',  'AGCTATCCACGA', 'AGCTATCCACGA', 0],
+                ['sample2', '@s5/2 abc/2',  'ACACACTATGGC', 'ACACACTATGGC', 0],
+                ['sample1', '@s6/2 abc/2',  'ACGATGCGACCA', 'ACGATGCGACCA', 0],
                 ['sample5', '@s7/2 abc/2',  'CATTGTATCAAC', 'CATCGTATCAAC', 1],
                 [None,      '@s8/2 abc/2',  'CTAACGCAGGGG', None,           4],
-                ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', None,        None],
-                ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', None,        None],
-                ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', None,        None]
+                ['sample5', '@s9/2 abc/2',  'CATCGTATCAAC', 'CATCGTATCAAC', 0],
+                ['sample5', '@s10/2 abc/2', 'CATCGTATCAAC', 'CATCGTATCAAC', 0],
+                ['sample4', '@s11/2 abc/2', 'CTAACGCAGTCA', 'CTAACGCAGTCA', 0]
                 ],
                 columns=['sample', 'barcode-sequence-id',
                          'barcode-uncorrected', 'barcode-corrected',
