@@ -266,8 +266,8 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     per_sample_fastqs = {}
     ec_details = []
-    correction_count = 1
-    for barcode_record, sequence_record in seqs:
+
+    for i, (barcode_record, sequence_record) in enumerate(seqs, start=1):
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
@@ -282,20 +282,20 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
             # Specifically that "...Golay codes of 12 bases can correct all
             # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+            golay_stats = [barcode_read, ecc_errors]
         else:
             barcode_read = raw_barcode_read
-            ecc_errors = None
+            golay_stats = [None, None]
 
         sample_id = barcode_map.get(barcode_read)
 
-        if ecc_errors:
-            ec_details.append(('record-%d' % correction_count,
-                               sample_id,
-                               barcode_record[0],
-                               raw_barcode_read,
-                               barcode_read,
-                               ecc_errors))
-            correction_count = correction_count + 1
+        record = [
+            i,
+            sample_id,
+            barcode_record[0],
+            raw_barcode_read,
+        ]
+        ec_details.append(record + golay_stats)
 
         if sample_id is None:
             continue
@@ -323,6 +323,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
         fastq_lines = '\n'.join(sequence_record) + '\n'
         fastq_lines = fastq_lines.encode('utf-8')
         per_sample_fastqs[sample_id].write(fastq_lines)
+    barcode_count = str(i)  # last value here should be our largest record no.
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No sequences were mapped to samples. Check that '
@@ -344,7 +345,10 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                'barcode-uncorrected',
                'barcode-corrected',
                'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
+    details = pd.DataFrame(ec_details, columns=columns)
+    details['id'] = details['id'].apply(lambda x: 'record-%s' %
+                                        str(x).zfill(len(barcode_count)))
+    details = details.set_index('id')
 
     return result, details
 
@@ -370,9 +374,9 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     per_sample_fastqs = {}
     ec_details = []
-    correction_count = 1
 
-    for barcode_record, forward_record, reverse_record in seqs:
+    for i, record in enumerate(seqs, start=1):
+        barcode_record, forward_record, reverse_record = record
         barcode_read = barcode_record[1]
         if rev_comp_barcodes:
             barcode_read = str(skbio.DNA(barcode_read).reverse_complement())
@@ -387,20 +391,20 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
             # Specifically that "...Golay codes of 12 bases can correct all
             # triple-bit errors and detect all quadruple-bit errors."
             barcode_read, ecc_errors = decoder.decode(raw_barcode_read)
+            golay_stats = [barcode_read, ecc_errors]
         else:
             barcode_read = raw_barcode_read
-            ecc_errors = None
+            golay_stats = [None, None]
 
         sample_id = barcode_map.get(barcode_read)
 
-        if ecc_errors:
-            ec_details.append(('record-%d' % correction_count,
-                               sample_id,
-                               barcode_record[0],
-                               raw_barcode_read,
-                               barcode_read,
-                               ecc_errors))
-            correction_count = correction_count + 1
+        record = [
+            i,
+            sample_id,
+            barcode_record[0],
+            raw_barcode_read,
+        ]
+        ec_details.append(record + golay_stats)
 
         if sample_id is None:
             continue
@@ -437,6 +441,7 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         fwd, rev = per_sample_fastqs[sample_id]
         fwd.write(('\n'.join(forward_record) + '\n').encode('utf-8'))
         rev.write(('\n'.join(reverse_record) + '\n').encode('utf-8'))
+    barcode_count = str(i)  # last value here should be our largest record no.
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No sequences were mapped to samples. Check that '
@@ -459,6 +464,9 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                'barcode-uncorrected',
                'barcode-corrected',
                'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns).set_index('id')
+    details = pd.DataFrame(ec_details, columns=columns)
+    details['id'] = details['id'].apply(lambda x: 'record-%s' %
+                                        str(x).zfill(len(barcode_count)))
+    details = details.set_index('id')
 
     return result, details
