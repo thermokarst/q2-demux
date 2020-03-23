@@ -40,15 +40,19 @@ class _PlotQualView:
         self.paired = paired
 
 
-def _link_sample_n_to_file(file_records, counts, subsample_ns):
+def _link_sample_n_to_file(file_records, counts, subsample_ns, direction):
     results = collections.defaultdict(list)
     for num in subsample_ns:
         total = 0
-        for file, sample_id in file_records:
-            total += counts[sample_id]
+        for record in file_records[direction]:
+            sample_id = record['sample_id']
+            filename = record['filename']
+
+            total += counts[direction][sample_id]
+            print(total, num, filename, sample_id)
             if num < total:
-                idx = counts[sample_id] - (total - num)
-                results[file].append(idx)
+                idx = counts[direction][sample_id] - (total - num)
+                results[filename].append(idx)
                 break
     return results
 
@@ -108,6 +112,7 @@ def _build_seq_len_table(qscores: pd.DataFrame) -> str:
     frame = stats.to_frame(name="")
     return q2templates.df_to_html(frame)
 
+TODO: foo
 
 def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     paired = data.paired
@@ -115,25 +120,67 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     dangers = []
     warnings = []
 
-    manifest = pd.read_csv(os.path.join(str(data), data.manifest.pathspec),
-                           header=0, comment='#')
-    manifest.filename = manifest.filename.apply(
-        lambda x: os.path.join(str(data), x))
+    manifest = data.manifest.view(pd.DataFrame)
 
-    fwd = manifest[manifest.direction == 'forward'].filename.tolist()
-    rev = manifest[manifest.direction == 'reverse'].filename.tolist()
+    directions = ['forward', 'reverse'] if paired else ['forward']
+    file_records = {'forward': [], 'reverse': []}
+    per_sample_fastq_counts = {'forward': {}, 'reverse': {}}
+    subsample_size = {'forward': n, 'reverse': n}
+    links = {'forward': {}, 'reverse': {}}
 
-    per_sample_fastq_counts = {}
-    reads = rev if not fwd and rev else fwd
-    file_records = []
-    for file in reads:
-        count = 0
-        for seq in _read_fastq_seqs(file):
-            count += 1
-        sample_id = manifest.loc[manifest.filename == file,
-                                 'sample-id'].iloc[0]
-        per_sample_fastq_counts[sample_id] = count
-        file_records.append((file, sample_id))
+    for sample_id, row in manifest.iterrows():
+        for direction in directions:
+            count = 0
+            filename = row[direction]
+            for seq in _read_fastq_seqs(filename):
+                count += 1
+            per_sample_fastq_counts[direction][sample_id] = count
+            file_records[direction].append({
+                'filename': filename,
+                'sample_id': sample_id,
+            })
+
+    print('file_records', file_records)
+    for direction in directions:
+        print('direction: ', direction)
+        # Prepare summary
+        result = pd.Series(per_sample_fastq_counts[direction])
+        result.name = 'Sequence count'
+        result.index.name = 'Sample name'
+        result.sort_values(inplace=True, ascending=False)
+
+        print(result)
+
+        # Create a TSV
+        result_fn = 'per-sample-fastq-counts-%s.tsv' % (direction, )
+        result_path = os.path.join(output_dir, result_fn)
+        result.to_csv(result_path, header=True, index=True, sep='\t')
+
+        sequence_count = result.sum()
+        if subsample_size[direction] > sequence_count:
+            subsample_size[direction] = sequence_count
+            warnings.append('A subsample value was provided that is greater '
+                            'than the amount of sequences across all samples. '
+                            'The plot was generated using all available '
+                            'sequences.')
+
+        subsample_ns = sorted(random.sample(range(sequence_count), subsample_size[direction]))
+        links[direction] = _link_sample_n_to_file(file_records,
+                                                  per_sample_fastq_counts,
+                                                  subsample_ns,
+                                                  direction)
+
+    print(links)
+
+    if paired:
+        sample_map = [(file, rev[fwd.index(file)], link[file])
+                      for file in link]
+        quality_scores, min_seq_len = _subsample_paired(sample_map)
+    else:
+        sample_map = [(file, link[file]) for file in link]
+        quality_scores, min_seq_len = _subsample_single(sample_map)
+
+########################
 
     result = pd.Series(per_sample_fastq_counts)
     result.name = 'Sequence count'
