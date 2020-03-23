@@ -49,7 +49,6 @@ def _link_sample_n_to_file(file_records, counts, subsample_ns, direction):
             filename = record['filename']
 
             total += counts[direction][sample_id]
-            print(total, num, filename, sample_id)
             if num < total:
                 idx = counts[direction][sample_id] - (total - num)
                 results[filename].append(idx)
@@ -116,8 +115,17 @@ def _build_seq_len_table(qscores: pd.DataFrame) -> str:
 def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     paired = data.paired
     data = data.directory_format
-    dangers = []
-    warnings = []
+    summary_columns = ['Minimum', 'Median', 'Mean', 'Maximum', 'Total']
+    context = {
+        'result_data': pd.DataFrame([], columns=summary_columns),
+        'result': {'forward': None, 'reverse': None},
+        'n_samples': {'forward': None, 'reverse': None},
+        'show_plot': {'forward': None, 'reverse': None},
+        'paired': paired,
+        'tabs': [{'title': 'Overview', 'url': 'overview.html'}],
+        'dangers': [],
+        'warnings': [],
+    }
 
     manifest = data.manifest.view(pd.DataFrame)
 
@@ -139,16 +147,12 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
                 'sample_id': sample_id,
             })
 
-    print('file_records', file_records)
     for direction in directions:
-        print('direction: ', direction)
         # Prepare summary
         result = pd.Series(per_sample_fastq_counts[direction])
         result.name = 'Sequence count'
         result.index.name = 'Sample name'
         result.sort_values(inplace=True, ascending=False)
-
-        print(result)
 
         # Create a TSV
         result_fn = 'per-sample-fastq-counts-%s.tsv' % (direction, )
@@ -158,10 +162,10 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         sequence_count = result.sum()
         if subsample_size[direction] > sequence_count:
             subsample_size[direction] = sequence_count
-            warnings.append('A subsample value was provided that is greater '
-                            'than the amount of sequences across all samples. '
-                            'The plot was generated using all available '
-                            'sequences.')
+            context.warnings.append('A subsample value was provided that is '
+                                    'greater than the amount of sequences '
+                                    'across all samples. The plot was '
+                                    'generated using all available sequences.')
 
         subsample_ns = sorted(random.sample(range(sequence_count), subsample_size[direction]))
         links[direction] = _link_sample_n_to_file(file_records,
@@ -169,73 +173,36 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
                                                   subsample_ns,
                                                   direction)
 
-    print(links)
-
-    if paired:
-        sample_map = [(file, rev[fwd.index(file)], link[file])
-                      for file in link]
-        quality_scores, min_seq_len = _subsample_paired(sample_map)
-    else:
-        sample_map = [(file, link[file]) for file in link]
+        sample_map = [(k, v) for k, v in links[direction].items()]
         quality_scores, min_seq_len = _subsample_single(sample_map)
 
-########################
+        show_plot = len(sample_map) > 0
 
-    result = pd.Series(per_sample_fastq_counts)
-    result.name = 'Sequence count'
-    result.index.name = 'Sample name'
-    result.sort_values(inplace=True, ascending=False)
-    result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
-                  header=True, index=True)
-    sequence_count = result.sum()
-    if n > sequence_count:
-        n = sequence_count
-        warnings.append('A subsample value was provided that is greater than '
-                        'the amount of sequences across all samples. The plot '
-                        'was generated using all available sequences.')
-
-    subsample_ns = sorted(random.sample(range(sequence_count), n))
-    link = _link_sample_n_to_file(file_records,
-                                  per_sample_fastq_counts,
-                                  subsample_ns)
-    if paired:
-        sample_map = [(file, rev[fwd.index(file)], link[file])
-                      for file in link]
-        quality_scores, min_seq_len = _subsample_paired(sample_map)
-    else:
-        sample_map = [(file, link[file]) for file in link]
-        quality_scores, min_seq_len = _subsample_single(sample_map)
-
-    show_plot = len(fwd) > 1
-    if show_plot:
         ax = sns.distplot(result, kde=False)
         ax.set_xlabel('Number of sequences')
         ax.set_ylabel('Frequency')
         fig = ax.get_figure()
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
+        fig.savefig(os.path.join(output_dir,
+                                 'demultiplex-summary-%s.png' % (direction, )))
+        fig.savefig(os.path.join(output_dir,
+                                 'demultiplex-summary-%s.pdf' % (direction, )))
 
-    html_df = result.to_frame().reset_index(drop=False)
-    html = q2templates.df_to_html(html_df, index=False)
+        html_df = result.to_frame().reset_index(drop=False)
+        html = q2templates.df_to_html(html_df, index=False)
+
+    df = pd.DataFrame([[result.min(), result.median(), result.mean(),
+                        result.max(), sequence_count]],
+                      index=[direction],
+                      columns=summary_columns)
+    # RESUME: looks like i am not appending in place - fix that when I resume this work.
+    # Also, don't forget to transpose the table before rendering as HTML
+    context['result_data'].append(df)
+    context['result'][direction] = html
+    context['n_samples'][direction] = result.count()
+    context['show_plot'][direction] = show_plot
+
     index = os.path.join(TEMPLATES, 'assets', 'index.html')
     overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
-    context = {
-        'result_data': {
-            'min': result.min(),
-            'median': result.median(),
-            'mean': result.mean(),
-            'max': result.max(),
-            'sum': sequence_count
-        },
-        'result': html,
-        'n_samples': result.count(),
-        'show_plot': show_plot,
-        'paired': paired,
-        'tabs': [{'title': 'Overview',
-                  'url': 'overview.html'}],
-        'dangers': dangers,
-        'warnings': warnings,
-    }
     templates = [index, overview_template]
 
     forward_scores = pd.DataFrame(quality_scores['forward'])
@@ -247,11 +214,13 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         forward_length_table = _build_seq_len_table(forward_scores)
 
         if (forward_stats.loc['50%'] > 45).any():
-            dangers.append('Some of the PHRED quality values are out of '
-                           'range. This is likely because an incorrect PHRED '
-                           'offset was chosen on import of your raw data. You '
-                           'can learn how to choose your PHRED offset during '
-                           'import in the importing tutorial.')
+            context['dangers'].append('Some of the PHRED quality values are '
+                                      'out of range. This is likely because '
+                                      'an incorrect PHRED offset was chosen '
+                                      'on import of your raw data. You can '
+                                      'learn how to choose your PHRED offset '
+                                      'during import in the importing '
+                                      'tutorial.')
 
         templates.append(os.path.join(TEMPLATES, 'assets',
                                       'quality-plot.html'))
@@ -278,6 +247,8 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
             if quality_template not in templates:
                 templates.append(quality_template)
 
+    print(context['result_data'])
+    context['result_data'] = q2templates.df_to_html(context['result_data'])
     q2templates.render(templates, output_dir, context=context)
 
     shutil.copytree(os.path.join(TEMPLATES, 'assets', 'dist'),
