@@ -112,7 +112,6 @@ def _build_seq_len_table(qscores: pd.DataFrame) -> str:
     frame = stats.to_frame(name="")
     return q2templates.df_to_html(frame)
 
-TODO: foo
 
 def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     paired = data.paired
