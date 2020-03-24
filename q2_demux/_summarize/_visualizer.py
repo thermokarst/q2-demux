@@ -116,6 +116,11 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     paired = data.paired
     data = data.directory_format
     summary_columns = ['Minimum', 'Median', 'Mean', 'Maximum', 'Total']
+
+    index = os.path.join(TEMPLATES, 'assets', 'index.html')
+    overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
+    templates = [index, overview_template]
+
     context = {
         'result_data': pd.DataFrame([], columns=summary_columns),
         'result': pd.DataFrame(),
@@ -134,6 +139,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     per_sample_fastq_counts = {'forward': {}, 'reverse': {}}
     subsample_size = {'forward': n, 'reverse': n}
     links = {'forward': {}, 'reverse': {}}
+    qual_stats = {'forward': None, 'reverse': None}
 
     for sample_id, row in manifest.iterrows():
         for direction in directions:
@@ -157,10 +163,11 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         sequence_count = result.sum()
         if subsample_size[direction] > sequence_count:
             subsample_size[direction] = sequence_count
-            context['warnings'].append('A subsample value was provided that is '
-                                    'greater than the amount of sequences '
-                                    'across all samples. The plot was '
-                                    'generated using all available sequences.')
+            context['warnings'].append(
+                'A subsample value was provided that is greater than the '
+                'amount of sequences across all samples for the %s reads. '
+                'The plot was generated using all available sequences.' %
+                (direction, ))
 
         subsample_ns = sorted(random.sample(range(sequence_count), subsample_size[direction]))
         links[direction] = _link_sample_n_to_file(file_records,
@@ -195,51 +202,31 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         context['n_samples'][direction] = result.count()
         context['show_plot'][direction] = show_plot
 
-    index = os.path.join(TEMPLATES, 'assets', 'index.html')
-    overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
-    templates = [index, overview_template]
+        scores = pd.DataFrame(quality_scores[direction])
+        if not scores.empty:
+            stats = _compute_stats_of_df(scores)
+            stats.to_csv(
+                os.path.join(output_dir,
+                             '%s-seven-number-summaries.tsv' % (direction,)),
+                header=True, index=True, sep='\t')
+            length_table = _build_seq_len_table(scores)
+            qual_stats[direction] = stats
 
-    forward_scores = pd.DataFrame(quality_scores['forward'])
-    if not forward_scores.empty:
-        forward_stats = _compute_stats_of_df(forward_scores)
-        forward_stats.to_csv(os.path.join(output_dir,
-                             'forward-seven-number-summaries.csv'),
-                             header=True, index=True)
-        forward_length_table = _build_seq_len_table(forward_scores)
+            if (stats.loc['50%'] > 45).any():
+                context['dangers'].append(
+                    'Some of the %s PHRED quality values are out of range. '
+                    'This is likely because an incorrect PHRED offset was '
+                    'chosen on import of your raw data. You can learn how '
+                    'to choose your PHRED offset during import in the '
+                    'importing tutorial.' % (direction, ))
 
-        if (forward_stats.loc['50%'] > 45).any():
-            context['dangers'].append('Some of the PHRED quality values are '
-                                      'out of range. This is likely because '
-                                      'an incorrect PHRED offset was chosen '
-                                      'on import of your raw data. You can '
-                                      'learn how to choose your PHRED offset '
-                                      'during import in the importing '
-                                      'tutorial.')
+            templates.append(os.path.join(TEMPLATES, 'assets',
+                                          'quality-plot.html'))
 
-        templates.append(os.path.join(TEMPLATES, 'assets',
-                                      'quality-plot.html'))
-
-        context['forward_length_table'] = forward_length_table
-        context['tabs'].append({'title': 'Interactive Quality Plot',
-                               'url': 'quality-plot.html'})
-
-    # Required initilization for conditional display of the table
-    reverse_length_table = None
-    if paired:
-        reverse_scores = pd.DataFrame(quality_scores['reverse'])
-        if not reverse_scores.empty:
-            reverse_stats = _compute_stats_of_df(reverse_scores)
-            reverse_stats.to_csv(os.path.join(output_dir,
-                                 'reverse-seven-number-summaries.csv'),
-                                 header=True, index=True)
-            reverse_length_table = _build_seq_len_table(reverse_scores)
-            context['reverse_length_table'] = reverse_length_table
-            # If we have reverse reads and not forward reads (due to some sort
-            # of error) the quality template will still need to be added
-            quality_template = os.path.join(TEMPLATES, 'assets',
-                                            'quality-plot.html')
-            if quality_template not in templates:
-                templates.append(quality_template)
+            # TODO: resume here, fix up this variable name and related template handling
+            context['forward_length_table'] = length_table
+            context['tabs'].append({'title': 'Interactive Quality Plot',
+                                   'url': 'quality-plot.html'})
 
     context['result_data'] = q2templates.df_to_html(context['result_data'].transpose())
 
@@ -260,11 +247,9 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         json.dump({'n': int(n), 'totalSeqCount': int(sequence_count),
                    'minSeqLen': min_seq_len}, fh)
         fh.write(',')
-        if not forward_scores.empty:
-            forward_stats.to_json(fh)
-        else:
-            forward_scores.to_json(fh)
-        if paired and not reverse_scores.empty:
+        if qual_stats['forward'] is not None and not qual_stats['forward'].empty:
+            qual_stats['forward'].to_json(fh)
+        if qual_stats['reverse'] is not None and not qual_stats['reverse'].empty:
             fh.write(',')
-            reverse_stats.to_json(fh)
+            qual_stats['reverse'].to_json(fh)
         fh.write(');')
