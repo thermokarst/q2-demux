@@ -118,7 +118,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     summary_columns = ['Minimum', 'Median', 'Mean', 'Maximum', 'Total']
     context = {
         'result_data': pd.DataFrame([], columns=summary_columns),
-        'result': {'forward': None, 'reverse': None},
+        'result': pd.DataFrame(),
         'n_samples': {'forward': None, 'reverse': None},
         'show_plot': {'forward': None, 'reverse': None},
         'paired': paired,
@@ -150,19 +150,14 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     for direction in directions:
         # Prepare summary
         result = pd.Series(per_sample_fastq_counts[direction])
-        result.name = 'Sequence count'
-        result.index.name = 'Sample name'
+        result.name = '%s sequence count' % (direction,)
+        result.index.name = 'sample ID'
         result.sort_values(inplace=True, ascending=False)
-
-        # Create a TSV
-        result_fn = 'per-sample-fastq-counts-%s.tsv' % (direction, )
-        result_path = os.path.join(output_dir, result_fn)
-        result.to_csv(result_path, header=True, index=True, sep='\t')
 
         sequence_count = result.sum()
         if subsample_size[direction] > sequence_count:
             subsample_size[direction] = sequence_count
-            context.warnings.append('A subsample value was provided that is '
+            context['warnings'].append('A subsample value was provided that is '
                                     'greater than the amount of sequences '
                                     'across all samples. The plot was '
                                     'generated using all available sequences.')
@@ -178,28 +173,27 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
 
         show_plot = len(sample_map) > 0
 
-        ax = sns.distplot(result, kde=False)
+        ax = sns.distplot(result, kde=False, color='black')
         ax.set_xlabel('Number of sequences')
-        ax.set_ylabel('Frequency')
+        ax.set_ylabel('Number of samples')
         fig = ax.get_figure()
         fig.savefig(os.path.join(output_dir,
                                  'demultiplex-summary-%s.png' % (direction, )))
         fig.savefig(os.path.join(output_dir,
                                  'demultiplex-summary-%s.pdf' % (direction, )))
+        fig.clear()
 
-        html_df = result.to_frame().reset_index(drop=False)
-        html = q2templates.df_to_html(html_df, index=False)
+        df = pd.DataFrame([[result.min(), result.median(), result.mean(),
+                            result.max(), sequence_count]],
+                          index=['%s reads' % (direction,)],
+                          columns=summary_columns)
+        context['result_data'] = context['result_data'].append(df)
 
-    df = pd.DataFrame([[result.min(), result.median(), result.mean(),
-                        result.max(), sequence_count]],
-                      index=[direction],
-                      columns=summary_columns)
-    # RESUME: looks like i am not appending in place - fix that when I resume this work.
-    # Also, don't forget to transpose the table before rendering as HTML
-    context['result_data'].append(df)
-    context['result'][direction] = html
-    context['n_samples'][direction] = result.count()
-    context['show_plot'][direction] = show_plot
+        html_df = result.to_frame()
+        context['result'] = context['result'].join(html_df, how='outer')
+
+        context['n_samples'][direction] = result.count()
+        context['show_plot'][direction] = show_plot
 
     index = os.path.join(TEMPLATES, 'assets', 'index.html')
     overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
@@ -247,8 +241,15 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
             if quality_template not in templates:
                 templates.append(quality_template)
 
-    print(context['result_data'])
-    context['result_data'] = q2templates.df_to_html(context['result_data'])
+    context['result_data'] = q2templates.df_to_html(context['result_data'].transpose())
+
+    # Create a TSV before turning into HTML table
+    result_fn = 'per-sample-fastq-counts.tsv'
+    result_path = os.path.join(output_dir, result_fn)
+    context['result'].to_csv(result_path, header=True, index=True, sep='\t')
+
+    context['result'] = q2templates.df_to_html(context['result'])
+
     q2templates.render(templates, output_dir, context=context)
 
     shutil.copytree(os.path.join(TEMPLATES, 'assets', 'dist'),
