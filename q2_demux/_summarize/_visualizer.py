@@ -6,6 +6,13 @@
 # The full license is in the file LICENSE, distributed with this software.
 # ----------------------------------------------------------------------------
 
+# TODO:
+# - clean up unused functions
+# - clean up context and other state variables - I have a hunch we can consolidate
+# - fix "The minimum sequence length identified during subsampling was undefined bases"
+# - existing tests are broken
+# - think about new tests
+
 import collections
 import os
 import pkg_resources
@@ -56,6 +63,7 @@ def _link_sample_n_to_file(file_records, counts, subsample_ns, direction):
     return results
 
 
+# TODO: remove
 def _subsample_paired(fastq_map):
     qual_sample = collections.defaultdict(list)
     min_seq_len = {'forward': float('inf'), 'reverse': float('inf')}
@@ -75,6 +83,7 @@ def _subsample_paired(fastq_map):
     return qual_sample, min_seq_len
 
 
+# TODO: remove
 def _subsample_single(fastq_map):
     qual_sample = collections.defaultdict(list)
     min_seq_len = {'forward': float('inf'), 'reverse': None}
@@ -84,6 +93,20 @@ def _subsample_single(fastq_map):
                 min_seq_len['forward'] = min(min_seq_len['forward'],
                                              len(seq[1]))
                 qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
+                index.pop(0)
+                if len(index) == 0:
+                    break
+    return qual_sample, min_seq_len
+
+
+def _subsample(fastq_map):
+    qual_sample = []
+    min_seq_len = float('inf')
+    for file, index in fastq_map:
+        for i, seq in enumerate(_read_fastq_seqs(file)):
+            if i == index[0]:
+                min_seq_len = min(min_seq_len, len(seq[1]))
+                qual_sample.append(_decode_qual_to_phred33(seq[3]))
                 index.pop(0)
                 if len(index) == 0:
                     break
@@ -130,6 +153,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         'tabs': [{'title': 'Overview', 'url': 'overview.html'}],
         'dangers': [],
         'warnings': [],
+        'length_tables': {'forward': None, 'reverse': None},
     }
 
     manifest = data.manifest.view(pd.DataFrame)
@@ -176,7 +200,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
                                                   direction)
 
         sample_map = [(k, v) for k, v in links[direction].items()]
-        quality_scores, min_seq_len = _subsample_single(sample_map)
+        quality_scores, min_seq_len = _subsample(sample_map)
 
         show_plot = len(sample_map) > 0
 
@@ -202,7 +226,7 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
         context['n_samples'][direction] = result.count()
         context['show_plot'][direction] = show_plot
 
-        scores = pd.DataFrame(quality_scores[direction])
+        scores = pd.DataFrame(quality_scores)
         if not scores.empty:
             stats = _compute_stats_of_df(scores)
             stats.to_csv(
@@ -220,13 +244,13 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
                     'to choose your PHRED offset during import in the '
                     'importing tutorial.' % (direction, ))
 
-            templates.append(os.path.join(TEMPLATES, 'assets',
-                                          'quality-plot.html'))
+            context['length_tables'][direction] = length_table
 
-            # TODO: resume here, fix up this variable name and related template handling
-            context['forward_length_table'] = length_table
-            context['tabs'].append({'title': 'Interactive Quality Plot',
-                                   'url': 'quality-plot.html'})
+    if qual_stats['forward'] is not None or qual_stats['reverse'] is not None:
+        templates.append(os.path.join(TEMPLATES, 'assets',
+                                      'quality-plot.html'))
+        context['tabs'].append({'title': 'Interactive Quality Plot',
+                               'url': 'quality-plot.html'})
 
     context['result_data'] = q2templates.df_to_html(context['result_data'].transpose())
 
