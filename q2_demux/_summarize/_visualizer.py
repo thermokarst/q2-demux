@@ -40,47 +40,30 @@ class _PlotQualView:
         self.paired = paired
 
 
-def _link_sample_n_to_file(file_records, counts, subsample_ns):
+def _link_sample_n_to_file(file_records, counts, subsample_ns, direction):
     results = collections.defaultdict(list)
     for num in subsample_ns:
         total = 0
-        for file, sample_id in file_records:
-            total += counts[sample_id]
+        for record in file_records[direction]:
+            sample_id = record['sample_id']
+            filename = record['filename']
+
+            total += counts[direction][sample_id]
             if num < total:
-                idx = counts[sample_id] - (total - num)
-                results[file].append(idx)
+                idx = counts[direction][sample_id] - (total - num)
+                results[filename].append(idx)
                 break
     return results
 
 
-def _subsample_paired(fastq_map):
-    qual_sample = collections.defaultdict(list)
-    min_seq_len = {'forward': float('inf'), 'reverse': float('inf')}
-    for fwd, rev, index in fastq_map:
-        file_pair = zip(_read_fastq_seqs(fwd), _read_fastq_seqs(rev))
-        for i, (fseq, rseq) in enumerate(file_pair):
-            if i == index[0]:
-                min_seq_len['forward'] = min(min_seq_len['forward'],
-                                             len(fseq[1]))
-                min_seq_len['reverse'] = min(min_seq_len['reverse'],
-                                             len(rseq[1]))
-                qual_sample['forward'].append(_decode_qual_to_phred33(fseq[3]))
-                qual_sample['reverse'].append(_decode_qual_to_phred33(rseq[3]))
-                index.pop(0)
-                if len(index) == 0:
-                    break
-    return qual_sample, min_seq_len
-
-
-def _subsample_single(fastq_map):
-    qual_sample = collections.defaultdict(list)
-    min_seq_len = {'forward': float('inf'), 'reverse': None}
+def _subsample(fastq_map):
+    qual_sample = []
+    min_seq_len = float('inf')
     for file, index in fastq_map:
         for i, seq in enumerate(_read_fastq_seqs(file)):
             if i == index[0]:
-                min_seq_len['forward'] = min(min_seq_len['forward'],
-                                             len(seq[1]))
-                qual_sample['forward'].append(_decode_qual_to_phred33(seq[3]))
+                min_seq_len = min(min_seq_len, len(seq[1]))
+                qual_sample.append(_decode_qual_to_phred33(seq[3]))
                 index.pop(0)
                 if len(index) == 0:
                     break
@@ -112,115 +95,141 @@ def _build_seq_len_table(qscores: pd.DataFrame) -> str:
 def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
     paired = data.paired
     data = data.directory_format
-    dangers = []
-    warnings = []
+    summary_columns = ['Minimum', 'Median', 'Mean', 'Maximum', 'Total']
 
-    manifest = pd.read_csv(os.path.join(str(data), data.manifest.pathspec),
-                           header=0, comment='#')
-    manifest.filename = manifest.filename.apply(
-        lambda x: os.path.join(str(data), x))
-
-    fwd = manifest[manifest.direction == 'forward'].filename.tolist()
-    rev = manifest[manifest.direction == 'reverse'].filename.tolist()
-
-    per_sample_fastq_counts = {}
-    reads = rev if not fwd and rev else fwd
-    file_records = []
-    for file in reads:
-        count = 0
-        for seq in _read_fastq_seqs(file):
-            count += 1
-        sample_id = manifest.loc[manifest.filename == file,
-                                 'sample-id'].iloc[0]
-        per_sample_fastq_counts[sample_id] = count
-        file_records.append((file, sample_id))
-
-    result = pd.Series(per_sample_fastq_counts)
-    result.name = 'Sequence count'
-    result.index.name = 'Sample name'
-    result.sort_values(inplace=True, ascending=False)
-    result.to_csv(os.path.join(output_dir, 'per-sample-fastq-counts.csv'),
-                  header=True, index=True)
-    sequence_count = result.sum()
-
-    if n > sequence_count:
-        n = sequence_count
-        warnings.append('A subsample value was provided that is greater than '
-                        'the amount of sequences across all samples. The plot '
-                        'was generated using all available sequences.')
-
-    subsample_ns = sorted(random.sample(range(sequence_count), n))
-    link = _link_sample_n_to_file(file_records,
-                                  per_sample_fastq_counts,
-                                  subsample_ns)
-    if paired:
-        sample_map = [(file, rev[fwd.index(file)], link[file])
-                      for file in link]
-        quality_scores, min_seq_len = _subsample_paired(sample_map)
-    else:
-        sample_map = [(file, link[file]) for file in link]
-        quality_scores, min_seq_len = _subsample_single(sample_map)
-
-    forward_scores = pd.DataFrame(quality_scores['forward'])
-    forward_stats = _compute_stats_of_df(forward_scores)
-    forward_stats.to_csv(os.path.join(output_dir,
-                         'forward-seven-number-summaries.csv'),
-                         header=True, index=True)
-    forward_length_table = _build_seq_len_table(forward_scores)
-
-    if (forward_stats.loc['50%'] > 45).any():
-        dangers.append('Some of the PHRED quality values are out of range. '
-                       'This is likely because an incorrect PHRED offset '
-                       'was chosen on import of your raw data. You can learn '
-                       'how to choose your PHRED offset during import in the '
-                       'importing tutorial.')
-
-    # Required initilization for conditional display of the table
-    reverse_length_table = None
-    if paired:
-        reverse_scores = pd.DataFrame(quality_scores['reverse'])
-        reverse_stats = _compute_stats_of_df(reverse_scores)
-        reverse_stats.to_csv(os.path.join(output_dir,
-                             'reverse-seven-number-summaries.csv'),
-                             header=True, index=True)
-        reverse_length_table = _build_seq_len_table(reverse_scores)
-
-    show_plot = len(fwd) > 1
-    if show_plot:
-        ax = sns.distplot(result, kde=False)
-        ax.set_xlabel('Number of sequences')
-        ax.set_ylabel('Frequency')
-        fig = ax.get_figure()
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.png'))
-        fig.savefig(os.path.join(output_dir, 'demultiplex-summary.pdf'))
-
-    html_df = result.to_frame().reset_index(drop=False)
-    html = q2templates.df_to_html(html_df, index=False)
     index = os.path.join(TEMPLATES, 'assets', 'index.html')
     overview_template = os.path.join(TEMPLATES, 'assets', 'overview.html')
-    quality_template = os.path.join(TEMPLATES, 'assets', 'quality-plot.html')
+    templates = [index, overview_template]
+
     context = {
-        'result_data': {
-            'min': result.min(),
-            'median': result.median(),
-            'mean': result.mean(),
-            'max': result.max(),
-            'sum': sequence_count
-        },
-        'forward_length_table': forward_length_table,
-        'reverse_length_table': reverse_length_table,
-        'result': html,
-        'n_samples': result.count(),
-        'show_plot': show_plot,
+        'result_data': pd.DataFrame([], columns=summary_columns),
+        'result': pd.DataFrame(),
+        'n_samples': {'forward': None, 'reverse': None},
+        'show_plot': {'forward': None, 'reverse': None},
         'paired': paired,
-        'tabs': [{'title': 'Overview',
-                  'url': 'overview.html'},
-                 {'title': 'Interactive Quality Plot',
-                  'url': 'quality-plot.html'}],
-        'dangers': dangers,
-        'warnings': warnings,
+        'tabs': [{'title': 'Overview', 'url': 'overview.html'}],
+        'dangers': [],
+        'warnings': [],
+        'length_tables': {'forward': None, 'reverse': None},
     }
-    templates = [index, overview_template, quality_template]
+
+    manifest = data.manifest.view(pd.DataFrame)
+
+    directions = ['forward', 'reverse'] if paired else ['forward']
+    file_records = {'forward': [], 'reverse': []}
+    per_sample_fastq_counts = {'forward': {}, 'reverse': {}}
+    subsample_size = {'forward': n, 'reverse': n}
+    sequence_count = {'forward': None, 'reverse': None}
+    links = {'forward': {}, 'reverse': {}}
+    qual_stats = {'forward': None, 'reverse': None}
+    min_seq_len = {'forward': None, 'reverse': None}
+
+    for sample_id, row in manifest.iterrows():
+        for direction in directions:
+            count = 0
+            filename = row[direction]
+
+            # If we have an empty direction for a sample that will be a nan in
+            # the manifest. Skip that nan
+            if type(filename) != str:
+                if np.isnan(filename):
+                    continue
+
+            for seq in _read_fastq_seqs(filename):
+                count += 1
+            per_sample_fastq_counts[direction][sample_id] = count
+            file_records[direction].append({
+                'filename': filename,
+                'sample_id': sample_id,
+            })
+
+    for direction in directions:
+        # Prepare summary
+        result = pd.Series(per_sample_fastq_counts[direction])
+        result.name = '%s sequence count' % (direction,)
+        result.index.name = 'sample ID'
+        result.sort_values(inplace=True, ascending=False)
+
+        sequence_count[direction] = int(result.sum())
+        if subsample_size[direction] > sequence_count[direction]:
+            subsample_size[direction] = sequence_count[direction]
+            context['warnings'].append(
+                'A subsample value was provided that is greater than the '
+                'amount of sequences across all samples for the %s reads. '
+                'The plot was generated using all available sequences.' %
+                (direction, ))
+
+        subsample_ns = sorted(random.sample(range(sequence_count[direction]),
+                              subsample_size[direction]))
+        links[direction] = _link_sample_n_to_file(file_records,
+                                                  per_sample_fastq_counts,
+                                                  subsample_ns,
+                                                  direction)
+
+        sample_map = [(k, v) for k, v in links[direction].items()]
+        quality_scores, dir_min_seq_len = _subsample(sample_map,)
+        min_seq_len[direction] = dir_min_seq_len
+
+        show_plot = len(sample_map) > 0
+
+        ax = sns.distplot(result, kde=False, color='black')
+        ax.set_xlabel('Number of sequences')
+        ax.set_ylabel('Number of samples')
+        fig = ax.get_figure()
+        fig.savefig(os.path.join(output_dir,
+                                 'demultiplex-summary-%s.png' % (direction, )))
+        fig.savefig(os.path.join(output_dir,
+                                 'demultiplex-summary-%s.pdf' % (direction, )))
+        fig.clear()
+
+        df = pd.DataFrame([[result.min(), result.median(), result.mean(),
+                            result.max(), sequence_count[direction]]],
+                          index=['%s reads' % (direction,)],
+                          columns=summary_columns)
+        context['result_data'] = context['result_data'].append(df)
+
+        html_df = result.to_frame()
+        context['result'] = context['result'].join(html_df, how='outer')
+
+        context['n_samples'][direction] = result.count()
+        context['show_plot'][direction] = show_plot
+
+        scores = pd.DataFrame(quality_scores)
+        if not scores.empty:
+            stats = _compute_stats_of_df(scores)
+            stats.to_csv(
+                os.path.join(output_dir,
+                             '%s-seven-number-summaries.tsv' % (direction,)),
+                header=True, index=True, sep='\t')
+            length_table = _build_seq_len_table(scores)
+            qual_stats[direction] = stats
+
+            if (stats.loc['50%'] > 45).any():
+                context['dangers'].append(
+                    'Some of the %s PHRED quality values are out of range. '
+                    'This is likely because an incorrect PHRED offset was '
+                    'chosen on import of your raw data. You can learn how '
+                    'to choose your PHRED offset during import in the '
+                    'importing tutorial.' % (direction, ))
+
+            context['length_tables'][direction] = length_table
+
+    if qual_stats['forward'] is not None or qual_stats['reverse'] is not None:
+        templates.append(os.path.join(TEMPLATES, 'assets',
+                                      'quality-plot.html'))
+        context['tabs'].append({'title': 'Interactive Quality Plot',
+                               'url': 'quality-plot.html'})
+
+    context['result_data'] = \
+        q2templates.df_to_html(context['result_data'].transpose())
+
+    # Create a TSV before turning into HTML table
+    result_fn = 'per-sample-fastq-counts.tsv'
+    result_path = os.path.join(output_dir, result_fn)
+    context['result'].to_csv(result_path, header=True, index=True, sep='\t')
+
+    context['result'] = q2templates.df_to_html(context['result'])
+
     q2templates.render(templates, output_dir, context=context)
 
     shutil.copytree(os.path.join(TEMPLATES, 'assets', 'dist'),
@@ -228,11 +237,19 @@ def summarize(output_dir: str, data: _PlotQualView, n: int = 10000) -> None:
 
     with open(os.path.join(output_dir, 'data.jsonp'), 'w') as fh:
         fh.write("app.init(")
-        json.dump({'n': int(n), 'totalSeqCount': int(sequence_count),
+        json.dump({'subsampleSize': subsample_size,
+                   'totalSeqCount': sequence_count,
                    'minSeqLen': min_seq_len}, fh)
-        fh.write(',')
-        forward_stats.to_json(fh)
-        if paired:
-            fh.write(',')
-            reverse_stats.to_json(fh)
+        fh.write(', ')
+        if qual_stats['forward'] is not None and not \
+                qual_stats['forward'].empty:
+            qual_stats['forward'].to_json(fh)
+        else:
+            fh.write('undefined')
+        fh.write(', ')
+        if qual_stats['reverse'] is not None and not \
+                qual_stats['reverse'].empty:
+            qual_stats['reverse'].to_json(fh)
+        else:
+            fh.write('undefined')
         fh.write(');')

@@ -11,7 +11,6 @@ import unittest.mock as mock
 import os.path
 import tempfile
 import json
-import shutil
 import random
 
 import pandas as pd
@@ -26,7 +25,8 @@ from q2_demux._demux import (BarcodeSequenceFastqIterator,
 from q2_demux import emp_single, emp_paired, summarize
 from q2_types.per_sample_sequences import (
     FastqGzFormat, FastqManifestFormat,
-    SingleLanePerSampleSingleEndFastqDirFmt)
+    SingleLanePerSampleSingleEndFastqDirFmt,
+    SingleLanePerSamplePairedEndFastqDirFmt)
 from q2_demux._summarize._visualizer import (_PlotQualView,
                                              _decode_qual_to_phred33)
 
@@ -182,7 +182,7 @@ class EmpTestingUtils:
 
     def _compare_manifests(self, act_manifest, exp_manifest):
         # strip comment lines before comparing
-        act_manifest = [l for l in act_manifest if not l.startswith('#')]
+        act_manifest = [x for x in act_manifest if not x.startswith('#')]
         self.assertEqual(act_manifest, exp_manifest)
 
     def _validate_sample_fastq(self, fastq, sequences, indices):
@@ -862,26 +862,28 @@ class SummarizeTests(TestPluginBase):
             index_fp = os.path.join(output_dir, 'overview.html')
             self.assertTrue(os.path.exists(index_fp))
             self.assertTrue(os.path.getsize(index_fp) > 0)
-            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
-            self.assertTrue(os.path.exists(csv_fp))
-            self.assertTrue(os.path.getsize(csv_fp) > 0)
-            pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
-            self.assertTrue(os.path.exists(pdf_fp))
-            self.assertTrue(os.path.getsize(pdf_fp) > 0)
-            png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
-            self.assertTrue(os.path.exists(png_fp))
-            self.assertTrue(os.path.getsize(png_fp) > 0)
+            tsv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.tsv')
+            self.assertTrue(os.path.exists(tsv_fp))
+            self.assertTrue(os.path.getsize(tsv_fp) > 0)
+            fwd_pdf_fp = os.path.join(output_dir,
+                                      'demultiplex-summary-forward.pdf')
+            self.assertTrue(os.path.exists(fwd_pdf_fp))
+            self.assertTrue(os.path.getsize(fwd_pdf_fp) > 0)
+            fwd_png_fp = os.path.join(output_dir,
+                                      'demultiplex-summary-forward.png')
+            self.assertTrue(os.path.exists(fwd_png_fp))
+            self.assertTrue(os.path.getsize(fwd_png_fp) > 0)
             qual_forward_fp = os.path.join(
-                output_dir, 'forward-seven-number-summaries.csv')
+                output_dir, 'forward-seven-number-summaries.tsv')
             self.assertTrue(os.path.exists(qual_forward_fp))
             self.assertTrue(os.path.getsize(qual_forward_fp) > 0)
             with open(index_fp, 'r') as fh:
                 html = fh.read()
-                self.assertIn('<td>Minimum:</td><td>1</td>', html)
-                self.assertIn('<td>Maximum:</td><td>3</td>', html)
-            with open(csv_fp, 'r') as ch:
-                csv = ch.read()
-                self.assertIn('sample_1', csv)
+                self.assertIn('<th>Minimum</th>\n      <td>1</td>', html)
+                self.assertIn('<th>Maximum</th>\n      <td>3</td>', html)
+            with open(tsv_fp, 'r') as ch:
+                tsv = ch.read()
+                self.assertIn('sample_1', tsv)
 
     def test_single_sample(self):
         bsi = BarcodeSequenceFastqIterator(self.barcodes[:1],
@@ -904,55 +906,17 @@ class SummarizeTests(TestPluginBase):
             index_fp = os.path.join(output_dir, 'overview.html')
             self.assertTrue(os.path.exists(index_fp))
             self.assertTrue(os.path.getsize(index_fp) > 0)
-            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
-            self.assertTrue(os.path.exists(csv_fp))
-            self.assertTrue(os.path.getsize(csv_fp) > 0)
+            tsv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.tsv')
+            self.assertTrue(os.path.exists(tsv_fp))
+            self.assertTrue(os.path.getsize(tsv_fp) > 0)
             pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
             self.assertFalse(os.path.exists(pdf_fp))
             png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
             self.assertFalse(os.path.exists(png_fp))
             with open(index_fp, 'r') as fh:
                 html = fh.read()
-                self.assertIn('<td>Minimum:</td><td>1</td>', html)
-                self.assertIn('<td>Maximum:</td><td>1</td>', html)
-
-    def test_single_sample_multiple_files(self):
-        # Note, this case came up on the QIIME 2 Forum, due to a user running
-        # `summarize` with demuxed sequences that all had the same Sample ID
-        # in the internal MANIFEST file. With versions of seaborn greater than
-        # 0.8.0 this is no longer a problem, but on prior versions, the user
-        # would see the following error:
-        # TypeError: len() of unsized object
-        files = ['sample1_S0_L001_R1_001.fastq.gz',
-                 'sample2_S0_L001_R1_001.fastq.gz',
-                 'sample3_S0_L001_R1_001.fastq.gz',
-                 'MANIFEST', 'metadata.yml']
-        for f in files:
-            shutil.copy(
-                self.get_data_path('single_sample_multiple_files/%s' % f),
-                self.temp_dir.name)
-
-        demux_data = SingleLanePerSampleSingleEndFastqDirFmt(
-                self.temp_dir.name, mode='r')
-        with tempfile.TemporaryDirectory() as output_dir:
-            # TODO: Remove _PlotQualView wrapper
-            result = summarize(output_dir, _PlotQualView(demux_data,
-                                                         paired=False), n=1)
-            self.assertTrue(result is None)
-            index_fp = os.path.join(output_dir, 'overview.html')
-            self.assertTrue(os.path.exists(index_fp))
-            self.assertTrue(os.path.getsize(index_fp) > 0)
-            csv_fp = os.path.join(output_dir, 'per-sample-fastq-counts.csv')
-            self.assertTrue(os.path.exists(csv_fp))
-            self.assertTrue(os.path.getsize(csv_fp) > 0)
-            pdf_fp = os.path.join(output_dir, 'demultiplex-summary.pdf')
-            self.assertTrue(os.path.exists(pdf_fp))
-            png_fp = os.path.join(output_dir, 'demultiplex-summary.png')
-            self.assertTrue(os.path.exists(png_fp))
-            with open(index_fp, 'r') as fh:
-                html = fh.read()
-                self.assertIn('<td>Minimum:</td><td>1</td>', html)
-                self.assertIn('<td>Maximum:</td><td>1</td>', html)
+                self.assertIn('<th>Minimum</th>\n      <td>1</td>', html)
+                self.assertIn('<th>Maximum</th>\n      <td>1</td>', html)
 
     def test_paired_end(self):
         barcodes = self.barcodes[:3]
@@ -979,11 +943,11 @@ class SummarizeTests(TestPluginBase):
             self.assertTrue(result is None)
             plot_fp = os.path.join(output_dir, 'quality-plot.html')
             qual_forward_fp = os.path.join(
-                output_dir, 'forward-seven-number-summaries.csv')
+                output_dir, 'forward-seven-number-summaries.tsv')
             self.assertTrue(os.path.exists(qual_forward_fp))
             self.assertTrue(os.path.getsize(qual_forward_fp) > 0)
             qual_reverse_fp = os.path.join(
-                output_dir, 'reverse-seven-number-summaries.csv')
+                output_dir, 'reverse-seven-number-summaries.tsv')
             self.assertTrue(os.path.exists(qual_reverse_fp))
             self.assertTrue(os.path.getsize(qual_reverse_fp) > 0)
             with open(plot_fp, 'r') as fh:
@@ -1064,13 +1028,17 @@ class SummarizeTests(TestPluginBase):
                 plot_fp = os.path.join(output_dir, 'data.jsonp')
                 with open(plot_fp, 'r') as fh:
                     jsonp = fh.read()
-                    json_ = jsonp.replace('app.init(',
-                                          '[').replace(');', ']')
+                    json_ = jsonp.replace('app.init(', '[') \
+                                 .replace(');', ']') \
+                                 .replace('undefined', 'null')
                     payload = json.loads(json_)[0]
-                    self.assertEqual(payload["totalSeqCount"], 4)
+                    self.assertEqual(payload["totalSeqCount"],
+                                     {'forward': 4, 'reverse': None})
                     self.assertIn(payload["minSeqLen"]["forward"], lengths_)
                     self.assertEqual(payload["minSeqLen"]["reverse"], None)
-                    self.assertEqual(payload["n"], min(n, 4))
+                    self.assertEqual(payload["subsampleSize"]["forward"],
+                                     min(n, 4))
+                    self.assertEqual(payload["subsampleSize"]["reverse"], n)
 
     def test_inconsistent_sequence_length_paired(self):
         forward = [('@s1/1 abc/1', 'G', '+', 'Y'),
@@ -1102,16 +1070,23 @@ class SummarizeTests(TestPluginBase):
                 plot_fp = os.path.join(output_dir, 'data.jsonp')
                 with open(plot_fp, 'r') as fh:
                     jsonp = fh.read()
-                    json_ = jsonp.replace('app.init(',
-                                          '[').replace(');', ']')
+                    json_ = jsonp.replace('app.init(', '[') \
+                                 .replace(');', ']') \
+                                 .replace('undefined', 'null')
                     payload = json.loads(json_)[0]
-                    self.assertEqual(payload["totalSeqCount"], 4)
+                    self.assertEqual(payload["totalSeqCount"],
+                                     {'forward': 4, 'reverse': 4})
                     self.assertIn(payload["minSeqLen"]["forward"], lengths_)
                     self.assertIn(payload["minSeqLen"]["reverse"], lengths_)
-                    self.assertEqual(payload["n"], min(n, 4))
+                    self.assertEqual(payload["subsampleSize"]["forward"],
+                                     min(n, 4))
+                    self.assertEqual(payload["subsampleSize"]["reverse"],
+                                     min(n, 4))
 
     def test_sequence_length_uses_subsample_single(self):
-        random.seed(6)  # Will select s1 and s2 which aren't the shortest ones
+        # Will select s1 and s2 for forward and s1 and s3 for reverse which
+        # aren't the shortest ones
+        random.seed(6)
 
         sequences = [('@s1/1 abc/1', 'GGGGGGG', '+', 'YYYYYYY'),
                      ('@s2/1 abc/1', 'CCCCC', '+', 'PPPPP'),
@@ -1132,14 +1107,17 @@ class SummarizeTests(TestPluginBase):
             plot_fp = os.path.join(output_dir, 'data.jsonp')
             with open(plot_fp, 'r') as fh:
                 jsonp = fh.read()
-                json_ = jsonp.replace('app.init(',
-                                      '[').replace(');', ']')
+                json_ = jsonp.replace('app.init(', '[') \
+                             .replace(');', ']') \
+                             .replace('undefined', 'null')
                 payload = json.loads(json_)[0]
                 self.assertEqual(payload["minSeqLen"]["forward"], 5)
                 self.assertEqual(payload["minSeqLen"]["reverse"], None)
 
     def test_sequence_length_uses_subsample_paired(self):
-        random.seed(6)  # Will select s1 and s2 which aren't the shortest pairs
+        # Will select s1 and s2 for forward and S1 and S3 for reverse which
+        # aren't the shortest pairs
+        random.seed(6)
 
         forward = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
                    ('@s2/1 abc/1', 'CCCCC', '+', 'PPPPP'),
@@ -1169,7 +1147,72 @@ class SummarizeTests(TestPluginBase):
                                       '[').replace(');', ']')
                 payload = json.loads(json_)[0]
                 self.assertEqual(payload["minSeqLen"]["forward"], 3)
-                self.assertEqual(payload["minSeqLen"]["reverse"], 5)
+                self.assertEqual(payload["minSeqLen"]["reverse"], 3)
+
+    def test_warnings_per_direction(self):
+        forward = [('@s1/1 abc/1', 'GGG', '+', 'YYY'),
+                   ('@s2/1 abc/1', 'CCCCC', '+', 'PPPPP'),
+                   ('@s3/1 abc/1', 'A', '+', 'P'),
+                   ('@s4/1 abc/1', 'TTTTTTT', '+', 'PPPPPPP')]
+        reverse = [('@s1/1 abc/1', 'AAAAA', '+', 'YYYYY'),
+                   ('@s2/1 abc/1', 'TTTTTTT', '+', 'PPPPPPP'),
+                   ('@s3/1 abc/1', 'GGG', '+', 'PPP'),
+                   ('@s4/1 abc/1', 'C', '+', 'P')]
+        bpsi = BarcodePairedSequenceFastqIterator(self.barcodes, forward,
+                                                  reverse)
+
+        barcode_map = pd.Series(
+            ['AAAA', 'AACC'], name='bc',
+            index=pd.Index(['sample1', 'sample2'], name='id')
+        )
+        barcode_map = qiime2.CategoricalMetadataColumn(barcode_map)
+
+        demux_data, ecc = emp_paired(bpsi, barcode_map,
+                                     golay_error_correction=False)
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(demux_data, paired=True), n=5)
+            index_fp = os.path.join(output_dir, 'quality-plot.html')
+            with open(index_fp, 'r') as fh:
+                html = fh.read()
+                self.assertIn('greater than the amount of sequences across all'
+                              ' samples for the forward reads', html)
+                self.assertIn('greater than the amount of sequences across all'
+                              ' samples for the reverse reads', html)
+
+    def test_empty_single_end(self):
+        empty = SingleLanePerSampleSingleEndFastqDirFmt(
+            self.get_data_path('summarize_empty/empty_single_end'), mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(empty, paired=False), n=1)
+        # Checkpoint assertion
+        self.assertTrue(True)
+
+    def test_empty_paired_end(self):
+        empty = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path('summarize_empty/empty_paired_end'), mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(empty, paired=True), n=1)
+        # Checkpoint assertion
+        self.assertTrue(True)
+
+    def test_empty_paired_end_forward(self):
+        empty = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path(
+                'summarize_empty/empty_forward_in_paired_end'), mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(empty, paired=True), n=1)
+        # Checkpoint assertion
+        self.assertTrue(True)
+
+    def test_empty_paired_end_reverse(self):
+        empty = SingleLanePerSamplePairedEndFastqDirFmt(
+            self.get_data_path(
+                'summarize_empty/empty_reverse_in_paired_end'), mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(empty, paired=True), n=1)
+        # Checkpoint assertion
+        self.assertTrue(True)
 
 
 if __name__ == '__main__':
