@@ -1180,6 +1180,14 @@ class SummarizeTests(TestPluginBase):
                 self.assertIn('greater than the amount of sequences across all'
                               ' samples for the reverse reads', html)
 
+    def test_only_reverse_reads(self):
+        reverse = SingleLanePerSampleSingleEndFastqDirFmt(
+            self.get_data_path('reverse_only'), mode='r')
+        with tempfile.TemporaryDirectory() as output_dir:
+            summarize(output_dir, _PlotQualView(reverse, paired=False), n=1)
+        # Checkpoint assertion
+        self.assertTrue(True)
+
     def test_empty_single_end(self):
         empty = SingleLanePerSampleSingleEndFastqDirFmt(
             self.get_data_path('summarize_empty/empty_single_end'), mode='r')
