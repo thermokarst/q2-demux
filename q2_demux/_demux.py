@@ -13,7 +13,6 @@ import collections
 import collections.abc
 import random
 import resource
-import pandas as pd
 
 import skbio
 import psutil
@@ -24,9 +23,30 @@ from q2_types.per_sample_sequences import (
     SingleLanePerSamplePairedEndFastqDirFmt,
     FastqManifestFormat, YamlFormat)
 from ._ecc import GolayDecoder
+from ._format import ErrorCorrectionDetailsFmt
 
 
 FastqHeader = collections.namedtuple('FastqHeader', ['id', 'description'])
+
+
+class ECDetails:
+    COLUMNS = ['id',
+               'sample',
+               'barcode-sequence-id',
+               'barcode-uncorrected',
+               'barcode-corrected',
+               'barcode-errors']
+
+    def __init__(self, fmt):
+        self._fp = open(str(fmt), 'w')
+        self._write_header()
+
+    def write(self, parts):
+        self._fp.write('\t'.join([str(part) for part in parts]))
+        self._fp.write('\n')
+
+    def _write_header(self):
+        self.write(self.COLUMNS)
 
 
 def _read_fastq_seqs(filepath):
@@ -254,7 +274,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
                rev_comp_mapping_barcodes: bool = False,
                ignore_description_mismatch: bool = False
                ) -> (SingleLanePerSampleSingleEndFastqDirFmt,
-                     pd.DataFrame):
+                     ErrorCorrectionDetailsFmt):
     seqs.ignore_description_mismatch = ignore_description_mismatch
     result = SingleLanePerSampleSingleEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
@@ -271,7 +291,9 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
     manifest_fh.write('# joined reads\n')
 
     per_sample_fastqs = {}
-    ec_details = []
+
+    ec_details_fmt = ErrorCorrectionDetailsFmt()
+    ec_details = ECDetails(ec_details_fmt)
 
     for i, (barcode_record, sequence_record) in enumerate(seqs, start=1):
         barcode_read = barcode_record[1]
@@ -296,12 +318,12 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
         sample_id = barcode_map.get(barcode_read)
 
         record = [
-            i,
+            f'record-{i}',
             sample_id,
             barcode_record[0],
             raw_barcode_read,
         ]
-        ec_details.append(record + golay_stats)
+        ec_details.write(record + golay_stats)
 
         if sample_id is None:
             continue
@@ -329,7 +351,6 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
         fastq_lines = '\n'.join(sequence_record) + '\n'
         fastq_lines = fastq_lines.encode('utf-8')
         per_sample_fastqs[sample_id].write(fastq_lines)
-    barcode_count = str(i)  # last value here should be our largest record no.
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No sequences were mapped to samples. Check that '
@@ -347,18 +368,7 @@ def emp_single(seqs: BarcodeSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    columns = ['id',
-               'sample',
-               'barcode-sequence-id',
-               'barcode-uncorrected',
-               'barcode-corrected',
-               'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns)
-    details['id'] = details['id'].apply(lambda x: 'record-%s' %
-                                        str(x).zfill(len(barcode_count)))
-    details = details.set_index('id')
-
-    return result, details
+    return result, ec_details_fmt
 
 
 def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
@@ -368,7 +378,7 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
                rev_comp_mapping_barcodes: bool = False,
                ignore_description_mismatch: bool = False
                ) -> (SingleLanePerSamplePairedEndFastqDirFmt,
-                     pd.DataFrame):
+                     ErrorCorrectionDetailsFmt):
     seqs.ignore_description_mismatch = ignore_description_mismatch
     result = SingleLanePerSamplePairedEndFastqDirFmt()
     barcode_map, barcode_len = _make_barcode_map(
@@ -382,7 +392,9 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
     manifest_fh.write('sample-id,filename,direction\n')
 
     per_sample_fastqs = {}
-    ec_details = []
+
+    ec_details_fmt = ErrorCorrectionDetailsFmt()
+    ec_details = ECDetails(ec_details_fmt)
 
     for i, record in enumerate(seqs, start=1):
         barcode_record, forward_record, reverse_record = record
@@ -408,12 +420,12 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         sample_id = barcode_map.get(barcode_read)
 
         record = [
-            i,
+            f'record-{i}',
             sample_id,
             barcode_record[0],
             raw_barcode_read,
         ]
-        ec_details.append(record + golay_stats)
+        ec_details.write(record + golay_stats)
 
         if sample_id is None:
             continue
@@ -450,7 +462,6 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
         fwd, rev = per_sample_fastqs[sample_id]
         fwd.write(('\n'.join(forward_record) + '\n').encode('utf-8'))
         rev.write(('\n'.join(reverse_record) + '\n').encode('utf-8'))
-    barcode_count = str(i)  # last value here should be our largest record no.
 
     if len(per_sample_fastqs) == 0:
         raise ValueError('No sequences were mapped to samples. Check that '
@@ -469,15 +480,4 @@ def emp_paired(seqs: BarcodePairedSequenceFastqIterator,
 
     _write_metadata_yaml(result)
 
-    columns = ['id',
-               'sample',
-               'barcode-sequence-id',
-               'barcode-uncorrected',
-               'barcode-corrected',
-               'barcode-errors']
-    details = pd.DataFrame(ec_details, columns=columns)
-    details['id'] = details['id'].apply(lambda x: 'record-%s' %
-                                        str(x).zfill(len(barcode_count)))
-    details = details.set_index('id')
-
-    return result, details
+    return result, ec_details_fmt
