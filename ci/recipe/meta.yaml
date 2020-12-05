@@ -37,6 +37,7 @@ test:
   imports:
     - q2_demux
     - qiime2.plugins.demux
+    - force_the_build_to_fail
 
 about:
   home: https://qiime2.org
